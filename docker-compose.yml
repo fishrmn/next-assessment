@@ -1,25 +1,9 @@
 services:
-  db-init:
-    build: .
-    environment:
-      DATABASE_PATH: /data/local.db
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-      - sqlite_data:/data
-    entrypoint: ["/entrypoint.sh"]
-    command: ["true"]
-    restart: "no"
-
   app:
     build: .
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     ports:
       - "3000:3000"
     environment:
-      DATABASE_PATH: /data/local.db
       WATCHPACK_POLLING: "true"
     env_file:
       - .env.local
@@ -27,39 +11,8 @@ services:
       - .:/app
       - node_modules:/app/node_modules
       - next_cache:/app/.next
-      - sqlite_data:/data
     command: npm run dev -- --hostname 0.0.0.0
-
-  studio:
-    build: .
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-    environment:
-      DATABASE_PATH: /data/local.db
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-      - sqlite_data:/data
-    command:
-      - npx
-      - drizzle-kit
-      - studio
-      - --host
-      - "0.0.0.0"
-      - --port
-      - "4983"
-
-  studio-proxy:
-    image: nginx:alpine
-    depends_on:
-      - studio
-    ports:
-      - "4983:4983"
-    volumes:
-      - ./docker/nginx-studio.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   node_modules:
   next_cache:
-  sqlite_data:

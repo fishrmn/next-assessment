@@ -10,44 +10,48 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - **Next.js 16 (App Router) + TypeScript** — `src/app/`. Use Server Components by default; client components only where interactivity requires it.
 - **Tailwind CSS v4 + shadcn/ui** — UI primitives in `src/components/ui/` (shadcn-managed; add more with `npx shadcn@latest add <component>`, don't hand-edit unnecessarily). shadcn config in `components.json`.
-- **SQLite + Drizzle ORM** — already wired up. See Database below.
+- **Supabase Postgres (hosted) via @supabase/supabase-js** — see Database below. Do not install Prisma or another ORM.
 - **Node 22** — pinned in `.nvmrc`. Next 16 will not run on Node < 20.9.
 
-## Database (Drizzle + better-sqlite3)
+## Database (Supabase Postgres + supabase-js)
 
-The database is **already set up** — do not install Prisma or another ORM.
+The database is a **hosted Supabase project** accessed server-side only.
 
-- Schema lives in `src/db/schema.ts` (plain TypeScript table definitions). Example `pages` table provided: `id`, `name`, `template`, JSON `config`, timestamps.
-- Client: `import { db } from "@/db"` — **server-side only** (Server Components, Route Handlers, Server Actions). Never import in client components.
-- The DB file is `local.db` at the repo root (gitignored).
-
-If the user wants to see the studio you may create a terminal instance running `npm run db:studio` as long as you verify that https://local.drizzle.studio/ is not already up and running.
+- Schema source of truth is `supabase/schema.sql` (`users` + `pages` tables). Apply changes by running it in the Supabase Dashboard SQL Editor — it is idempotent.
+- RLS is enabled on both tables with **no policies** (deny-all to anon/authenticated). All access goes through the server client built with the secret key, which bypasses RLS.
+- Client: `import { listPages, getPage, createPage, updatePage } from "@/db"` — **server-side only** (the module is guarded by `server-only`). Never import in client components. Scripts import `src/db/client.ts` directly.
+- Env vars in `.env.local` (copy `.env.example`): `SUPABASE_URL`, `SUPABASE_SECRET_KEY`. Both are server-only secrets — never use a `NEXT_PUBLIC_` prefix.
+- There is no auth: all pages belong to a default user (`demo@salon.local`), upserted on demand by `getDefaultUser()`.
 
 Commands:
 
 | Command | Use when |
 |---------|----------|
-| `npm run db:push` | After any change to `src/db/schema.ts` |
-| `npm run db:studio` | To inspect/edit data in a browser GUI |
-| `npm run db:seed` | Insert example data (idempotent) |
-| `npm run db:reset` | Delete `local.db`, recreate from schema, re-seed |
+| `npm run db:seed` | Insert the default user + example page (idempotent; also a connectivity smoke test) |
 
-If `local.db` is missing or queries fail with "no such table", run `npm run db:reset`.
+If queries fail with "relation does not exist", run `supabase/schema.sql` in the SQL Editor.
 
 ## File map
 
 ```
 src/
-  app/                 # routes (App Router)
+  app/                 # routes (App Router): / list, /builder/new, /builder/[id], /preview/[id]
+    actions.ts         # Server Actions (createPageAction, savePageAction)
   components/
     ui/                # shadcn primitives (Button, Card, Badge, Separator, ...)
     builder/           # page-builder elements; TextElement is the reference example
+                       # types.ts (ElementConfig union), element-renderer.tsx (PageRenderer)
+    editor/            # client editor: editor.tsx, inspector, element-forms, fields, toolbar
   db/
-    schema.ts          # Drizzle table definitions — the source of truth for the data model
-    index.ts           # shared db client
-  lib/utils.ts         # cn() helper
-scripts/               # seed.ts, reset.ts (run via tsx)
-drizzle.config.ts      # drizzle-kit config (schema path, local.db)
+    client.ts          # lazy supabase-js client (secret key; usable from scripts)
+    queries.ts         # typed data layer (listPages, getPage, createPage, updatePage)
+    types.ts           # hand-written row types (User, Page)
+    index.ts           # server-only entry point — import "@/db" from app code
+  lib/
+    utils.ts           # cn() helper
+    templates.ts       # the three salon template presets
+scripts/seed.ts        # idempotent seed (run via tsx)
+supabase/schema.sql    # table definitions + RLS — the source of truth for the data model
 ```
 
 ## Conventions
