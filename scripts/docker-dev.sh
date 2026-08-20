@@ -41,9 +41,7 @@ wait_for_http() {
 docker compose up --build -d
 
 if [ "${DOCKER_OPEN_BROWSER:-1}" != "0" ]; then
-  wait_for_http "http://localhost:4983"
   wait_for_http "http://localhost:3000"
-  open_url "https://local.drizzle.studio/"
   open_url "http://localhost:3000"
 fi
 

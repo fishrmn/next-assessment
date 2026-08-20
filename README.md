@@ -10,11 +10,15 @@ We are testing your ability to **build quickly and well**. Use whatever AI tools
 git clone <this-repo>
 cd next_assesment
 npm install
-npm run db:reset   # creates and seeds local.db
+cp .env.example .env.local   # then paste your Supabase URL + secret key
+# Run supabase/schema.sql once in the Supabase Dashboard SQL Editor
+npm run db:seed              # seeds the default user + example page
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The home page summarizes this brief and is yours to replace as the app takes shape.
+Open [http://localhost:3000](http://localhost:3000).
+
+> **Note on persistence:** the original brief called for a local SQLite database; this implementation deliberately uses a **hosted Supabase Postgres** project instead (decision made during development). Pages and the default user live in Supabase, accessed server-side only via the secret key. See `supabase/schema.sql` and `src/db/`.
 
 ### Docker (development)
 
@@ -24,19 +28,14 @@ Requires [Docker](https://docs.docker.com/get-docker/) and a `.env.local` file (
 npm run docker
 ```
 
-This starts the stack in the background, waits for Drizzle Studio and the app to respond, then opens [https://local.drizzle.studio/](https://local.drizzle.studio/) and [http://localhost:3000](http://localhost:3000) in your default browser. Logs stream in the terminal until you press Ctrl+C (containers keep running).
+This starts the app in the background, waits for it to respond, then opens [http://localhost:3000](http://localhost:3000) in your default browser. Logs stream in the terminal until you press Ctrl+C (containers keep running).
 
 To start without opening browsers: `DOCKER_OPEN_BROWSER=0 npm run docker`
 
 To run in the foreground without the browser helper: `npm run docker:up`
 
-On first run, the `db-init` service creates and seeds the database if it does not exist yet.
-
-Drizzle Studio (database GUI) starts alongside the app. An nginx proxy on port 4983 forwards traffic to the studio container and adds the browser headers Docker requires.
-
-- The SQLite database persists in the `sqlite_data` named volume across restarts.
 - Rebuild after dependency changes: `npm run docker`
-- Stop: `docker compose down` (add `-v` to also wipe the database volume)
+- Stop: `docker compose down`
 
 ## What you're building
 
@@ -80,29 +79,25 @@ OPENAI_API_KEY=<provided-key>
 | Next.js (App Router) + TypeScript | `src/app/` |
 | Tailwind CSS v4 + shadcn/ui | `src/components/ui/`, `components.json` |
 | Example builder component | `src/components/builder/` |
-| SQLite + Drizzle ORM, wired and seeded | `src/db/`, `drizzle.config.ts` |
+| Supabase Postgres data layer (supabase-js) | `src/db/`, `supabase/schema.sql` |
 | Vitest + React Testing Library, example test | `src/components/builder/text-element.test.tsx` |
 | Pre-commit hook (type-check, lint, related tests) | `.husky/pre-commit` |
 
 ### Database
 
-Everything stays local — SQLite (`local.db`) with [Drizzle ORM](https://orm.drizzle.team), no external services. The client is ready to import from server code:
+Data lives in a hosted [Supabase](https://supabase.com) Postgres project (`users` + `pages` tables, schema in `supabase/schema.sql`). Access is server-side only, through typed query helpers:
 
 ```ts
-import { db } from "@/db"
-import { pages } from "@/db/schema"
+import { listPages, getPage, createPage, updatePage } from "@/db"
 
-const allPages = db.select().from(pages).all()
+const pages = await listPages()
 ```
+
+RLS is enabled with no public policies; the server uses the secret key (in `.env.local`, never committed, never `NEXT_PUBLIC_`). There is no login — every page belongs to a default demo user.
 
 | Command | What it does |
 |---------|--------------|
-| `npm run db:push` | Sync `src/db/schema.ts` to `local.db` (run after schema changes) |
-| `npm run db:studio` | Open a browser GUI to inspect and edit the database |
-| `npm run db:seed` | Insert the example page (skips if data already exists) |
-| `npm run db:reset` | Delete the database, recreate it from the schema, and re-seed |
-
-An example `pages` table is provided in `src/db/schema.ts` to show the pattern — extend or replace it freely. The data model is yours to design.
+| `npm run db:seed` | Insert the default user + example page (skips if data already exists) |
 
 ### Testing & pre-commit
 

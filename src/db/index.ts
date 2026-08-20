@@ -1,16 +1,10 @@
-import Database from "better-sqlite3"
-import { drizzle } from "drizzle-orm/better-sqlite3"
-
-import { getDatabasePath } from "./path"
-import * as schema from "./schema"
+import "server-only"
 
 /**
- * Shared database client. Import `db` from server code only
- * (Server Components, Route Handlers, Server Actions).
- *
- * If `local.db` doesn't exist yet, run `npm run db:reset` first.
+ * Server-side database entry point. Import from `@/db` in Server Components,
+ * Route Handlers, and Server Actions only — `server-only` turns any client
+ * bundle import into a build error.
  */
-const sqlite = new Database(getDatabasePath())
-sqlite.pragma("journal_mode = WAL")
-
-export const db = drizzle(sqlite, { schema })
+export * from "./client"
+export * from "./queries"
+export * from "./types"
