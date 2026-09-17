@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Page Builder Assessment",
-  description: "A Next.js assessment: build a small website page builder.",
+  title: "Brand Blueprint Builder",
+  description:
+    "A Next.js assessment: build a guided intake tool that produces a living Brand Blueprint.",
 };
 
 export default function RootLayout({

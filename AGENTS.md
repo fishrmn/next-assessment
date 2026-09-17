@@ -4,7 +4,11 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# Project: Page Builder Assessment
+# Project: Brand Blueprint Builder
+
+A guided intake tool that captures a client's business context and brand expression (visual
+style, color/typography direction, tone of voice, personality) and turns it into a persistent,
+presentable one-page Brand Blueprint, with a Phase 2 AI-assisted editing pass on that Blueprint.
 
 ## Stack
 

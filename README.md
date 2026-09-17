@@ -1,30 +1,45 @@
-# Page Builder Assessment
+# Brand Blueprint Builder
 
-Welcome! This assessment asks you to build a small **website page builder** — think a stripped-down Squarespace. A user picks a template, tweaks the design, previews the result live, and saves their work.
+Everything is scaffolded and waiting for you. Clone the repo at [https://github.com/fishrmn/next-assessment](https://github.com/fishrmn/next-assessment) and start the assignment!
 
-We are testing your ability to **build quickly and well**. Use whatever AI tools, editors, and workflows make you fastest — Cursor, Copilot, Claude, ChatGPT, or none at all. There are no restrictions on tooling. We care about the result and the decisions you made along the way.
+## Project stack
+
+- Next.js (App Router) + TypeScript + Tailwind + shadcn/ui
+- SQLite + Drizzle ORM, wired and seeded, with commands to reset and browse data
+- An example component (`TextElement`) showing one possible component pattern
+- Vitest + React Testing Library with an example test
+- Pre-commit hooks that type-check, lint, and run related tests
+
+## Ground rules
+
+- You will have approximately 1 hour to complete your project after you start.
+- You're welcome to replace the project scaffolding and start from scratch if you'd rather.
+- You may use any tool that you are comfortable with, and have access to, including AI tools.
+- We can provide an OpenAI API key to you during your session if you need one.
 
 ## Getting started
 
+### Locally (Node v22)
+
 ```bash
-git clone <this-repo>
-cd next_assesment
+git clone git@github.com:fishrmn/next-assessment.git
+cd next-assessment
 npm install
-npm run db:reset   # creates and seeds local.db
+npm run db:reset
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The home page summarizes this brief and is yours to replace as the app takes shape.
 
-### Docker (development)
-
-Requires [Docker](https://docs.docker.com/get-docker/) and a `.env.local` file (same as the non-Docker workflow above).
+### Docker
 
 ```bash
+git clone git@github.com:fishrmn/next-assessment.git
+cd next-assessment
 npm run docker
 ```
 
-This starts the stack in the background, waits for Drizzle Studio and the app to respond, then opens [https://local.drizzle.studio/](https://local.drizzle.studio/) and [http://localhost:3000](http://localhost:3000) in your default browser. Logs stream in the terminal until you press Ctrl+C (containers keep running).
+Requires [Docker](https://docs.docker.com/get-docker/) and a `.env.local` file (same as the local workflow above). This starts the stack in the background, waits for Drizzle Studio and the app to respond, then opens [https://local.drizzle.studio/](https://local.drizzle.studio/) and [http://localhost:3000](http://localhost:3000) in your default browser. Logs stream in the terminal until you press Ctrl+C (containers keep running).
 
 To start without opening browsers: `DOCKER_OPEN_BROWSER=0 npm run docker`
 
@@ -38,40 +53,49 @@ Drizzle Studio (database GUI) starts alongside the app. An nginx proxy on port 4
 - Rebuild after dependency changes: `npm run docker`
 - Stop: `docker compose down` (add `-v` to also wipe the database volume)
 
-## What you're building
+## What's a Brand Blueprint?
 
-An interactive page builder where a user can:
+A Brand Blueprint is a one-page summary of a client's brand, built from a short, self-guided intake process, that the team can use to understand who the client is and how to represent them from day one.
 
-1. **Choose one of three templates** — three distinct page layouts to start from.
-2. **Adjust design elements** — each element on the page exposes configuration (e.g. text content, colors, alignment). What is configurable, and how it's exposed in the editor, is up to you.
-3. **See changes immediately** — the preview updates live as the user edits.
-4. **Toggle preview size** — support a partial (editor side-by-side) view and a full-screen preview of the page.
-5. **Save their work** — selections persist to the local SQLite database and reload on revisit.
+It covers two layers:
+
+- **Business context** — who they are, who they serve, and what they're trying to accomplish. Things like their industry, target audience, competitors or comparable brands, and what makes them different.
+- **Brand expression** — how that identity should look, sound, and feel. This includes visual style, color and typography direction, tone of voice, and personality.
+
+Together, these give the team enough grounding to make brand-consistent decisions later, not just a moodboard with no context behind it. It's the reference doc we hand off or check back against during onboarding.
+
+## What we're testing
+
+Can you take a fuzzy, subjective problem, like "capture someone's brand," and turn it into a structured, usable web application?
+
+We care about the result and your reasoning along the way, not which editor or tool you used. We expect clear coding standards, readable code, and a good end-to-end user experience.
+
+## Phase 1: Capture & Blueprint
+
+Build a page where a user can:
+
+1. **Capture the brand direction** — a guided flow that surfaces things like visual style, color and typography direction, tone of voice, and brand personality.
+2. **Turn answers into a Blueprint** — a clear, presentable output the team can hand off or reference. Think structured one-pager, not a raw dump of form answers.
+3. **Watch it take shape** — the client (or the team member running the session) should get a live sense of the Blueprint forming as they go, not just a result at the end.
+4. **Save and come back to it** — inputs and the resulting Blueprint should persist, so the session can be picked up again before onboarding and referenced during it.
 
 The app must work on **mobile and desktop**.
 
-## Your decisions
+## Phase 2: AI-Assisted Editing
 
-This is intentionally open-ended. You will need to decide:
+Once the first draft exists, let the client (or team member) describe a change in plain language — "make the tone more playful," "swap the color direction to something warmer," "this doesn't sound like us, we're more minimal than bold" — and have the Blueprint update accordingly.
 
-- **Templating** — how templates are defined, stored, and rendered.
-- **Configuration** — how each element declares what is configurable, and how the editor exposes those controls.
-- **Component model** — build the base components a page is composed of. An example `TextElement` component is provided in `src/components/builder/` as a rendering reference; the rest are yours to design.
-- **Editor UX** — how editing, previewing, and saving fit together.
-
-We'd rather see a small set of elements done well than many done poorly.
-
-## AI editor
-
-Add an **AI-assisted editing** feature: the user describes a change in natural language (e.g. "make the hero darker and the headline bigger") and the page configuration updates accordingly.
-
-We will provide an OpenAI API key with your invite. Put it in `.env.local`:
+If we provide you with an OpenAI API key, put it in `.env.local`:
 
 ```bash
 OPENAI_API_KEY=<provided-key>
 ```
 
-> The key is temporary and will be revoked after the assessment. Never commit it.
+> It goes in your environment config, never in a commit, and will be revoked once the assessment is over.
+
+## The decisions are yours
+
+This is intentionally open-ended. You decide how templates are defined, how components expose configuration, what components are needed, and how the editor looks and feels. We'd rather see a few elements done very well than many done poorly.
 
 ## What's provided
 
@@ -115,14 +139,18 @@ npm run test:watch  # watch mode
 
 Every commit runs a pre-commit hook (Husky): `tsc --noEmit`, then ESLint and any tests related to your staged files (lint-staged). If the hook fails, fix the issue — don't bypass it.
 
-## What we evaluate
+## How we evaluate
 
-- **Speed to working software** — does the core loop (pick template → edit → preview → save) work?
-- **Decision quality** — sensible data model, component boundaries, and editor architecture.
-- **UX polish** — immediate preview, mobile + desktop, full-screen toggle.
+- **Speed to working software** — does the core loop (pick → edit → preview → save) work?
+- **Decision quality** — sensible data model, component boundaries, editor architecture
+- **UX polish** — immediate preview, mobile + desktop, full-screen toggle
 - **Code clarity** — could another engineer pick this up tomorrow?
 
 ## Submitting
 
-1. Push your work to a fork or a fresh repo and send us the link.
-2. Include a short note (in the README or a `NOTES.md`) covering the decisions you made, trade-offs, and what you'd do next with more time.
+For the repo:
+
+- Submit a PR with your changes.
+- Include anything you want to call out that is not obvious in the PR description. This includes any information on your decisions, trade-offs, and what you'd do next if you had more time.
+
+Questions? Reach out anytime. Otherwise, clone it and go.

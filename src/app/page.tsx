@@ -1,10 +1,10 @@
 import {
   Bot,
+  ClipboardList,
   Database,
-  LayoutTemplate,
   MonitorSmartphone,
-  PencilRuler,
   Save,
+  Sparkles,
 } from "lucide-react"
 
 import { TextElement } from "@/components/builder/text-element"
@@ -20,41 +20,42 @@ import { Separator } from "@/components/ui/separator"
 
 const userStories = [
   {
-    icon: LayoutTemplate,
-    title: "Choose a template",
+    icon: ClipboardList,
+    title: "Capture the brand direction",
     description:
-      "The user picks one of three distinct page layouts as a starting point.",
+      "A guided flow surfaces business context (industry, audience, competitors) and brand expression — visual style, color and typography direction, tone of voice, and personality.",
   },
   {
-    icon: PencilRuler,
-    title: "Adjust design elements",
+    icon: Sparkles,
+    title: "Turn answers into a Blueprint",
     description:
-      "Each element exposes configuration — text, colors, alignment, and whatever else you decide. The preview updates immediately.",
+      "A clear, presentable one-pager the team can hand off or reference — not a raw dump of form answers.",
   },
   {
     icon: MonitorSmartphone,
-    title: "Preview at any size",
+    title: "Watch it take shape",
     description:
-      "Support a side-by-side editor view and a full-screen preview. Works on mobile and desktop.",
+      "The Blueprint forms live as the flow progresses, not just as a result at the end. Works on mobile and desktop.",
   },
   {
     icon: Save,
-    title: "Save and reload",
+    title: "Save and come back to it",
     description:
-      "Selections persist to a local SQLite database and restore on revisit.",
+      "Inputs and the resulting Blueprint persist, so a session can be picked up again before onboarding and referenced during it.",
   },
   {
     icon: Bot,
-    title: "Edit with AI",
+    title: "Edit with AI (Phase 2)",
     description:
-      "The user describes a change in plain language and the page configuration updates. An OpenAI key will be provided during your interview.",
+      "The client describes a change in plain language — \"make the tone more playful\" — and the Blueprint updates accordingly.",
   },
 ] as const
 
 const decisions = [
   {
-    title: "Templating",
-    description: "How templates are defined, stored, and rendered.",
+    title: "Capture flow",
+    description:
+      "How the guided intake is structured — steps, question types, branching — and how it maps to a Brand Blueprint.",
   },
   {
     title: "Configuration",
@@ -68,7 +69,7 @@ const decisions = [
   },
   {
     title: "Editor UX",
-    description: "How editing, previewing, and saving fit together.",
+    description: "How capturing, previewing, editing, and saving fit together.",
   },
 ] as const
 
@@ -78,11 +79,11 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-12 px-6 py-16 sm:py-24">
         {/* Hero — rendered with the provided example builder component */}
         <section className="flex flex-col items-center gap-4 text-center">
-          <Badge variant="secondary">Next.js Assessment</Badge>
+          <Badge variant="secondary">Brand Blueprint Builder</Badge>
           <TextElement
             config={{
               type: "text",
-              text: "Build a page builder.",
+              text: "Build a brand blueprint tool.",
               level: "h1",
               align: "center",
             }}
@@ -90,14 +91,15 @@ export default function Home() {
           <TextElement
             config={{
               type: "text",
-              text: "A small, Squarespace-style editor: pick a template, tweak the design, preview live, and save. This headline is rendered by the example TextElement — your first building block.",
+              text: "A guided intake that captures a client's business context and brand expression, turns it into a live Brand Blueprint, and lets them refine it with AI. This headline is rendered by the example TextElement — your first building block.",
               level: "p",
               align: "center",
             }}
           />
           <p className="max-w-xl text-sm text-muted-foreground">
-            Use any AI tools or editors you like — we&apos;re measuring how
-            quickly you can ship something good. The full brief is in the{" "}
+            You&apos;ll have about an hour. Use any tools you&apos;re
+            comfortable with, including AI — we&apos;re measuring how quickly
+            you can ship something good. The full brief is in the{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
               README.md
             </code>
@@ -178,8 +180,8 @@ export default function Home() {
             you oriented.
           </p>
           <p>
-            Submit a repo link plus a short note on your decisions when
-            you&apos;re done.
+            Submit a PR when you&apos;re done, with a note on your decisions,
+            trade-offs, and what you&apos;d do next in the description.
           </p>
         </footer>
       </main>
