@@ -26,5 +26,23 @@ export const pages = sqliteTable("pages", {
     .default(sql`(unixepoch())`),
 })
 
+/**
+ * One row per intake session. `data` holds the whole Blueprint document as JSON
+ * (shape: `Blueprint` in `src/lib/blueprint/model.ts`). Always read it through
+ * `normalizeBlueprint`, never trust the stored shape directly.
+ */
+export const blueprints = sqliteTable("blueprints", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Brand name, duplicated from `data.business.name` so lists need no JSON parsing. */
+  name: text("name").notNull(),
+  data: text("data", { mode: "json" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+})
+
 export type Page = typeof pages.$inferSelect
 export type NewPage = typeof pages.$inferInsert
