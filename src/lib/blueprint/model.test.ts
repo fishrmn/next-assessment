@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import { emptyBlueprint, normalizeBlueprint } from "./model"
-import { completion, describeScale, scaleField, writeScale } from "./registry"
+import { completion } from "./fields"
+import { describeColor, describeScale, scaleField, writeScale } from "./registry"
 
 describe("normalizeBlueprint", () => {
   it("turns anything into a valid, empty Blueprint", () => {
@@ -61,6 +62,15 @@ describe("registry", () => {
   it("counts answered questions", () => {
     const blueprint = writeScale(emptyBlueprint("Acme"), "density", 2)
     expect(completion(emptyBlueprint())).toBe(0)
-    expect(completion(blueprint)).toBe(10)
+    // "Acme" and one scale: 2 of 16 fields.
+    expect(completion(blueprint)).toBe(13)
+  })
+
+  it("reads the color direction off the primary color", () => {
+    const palette = { secondary: "#000000", accent: "#000000", background: "#ffffff" }
+    expect(describeColor(null)).toBeNull()
+    expect(describeColor({ ...palette, primary: "#c2410c" })).toBe("Warm and vivid")
+    expect(describeColor({ ...palette, primary: "#47607a" })).toBe("Cool and muted")
+    expect(describeColor({ ...palette, primary: "#18181b" })).toBe("Neutral and muted")
   })
 })

@@ -21,9 +21,9 @@ import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Toggle } from "@/components/ui/toggle"
 import { SECTION_IDS, type Blueprint, type SectionId } from "@/lib/blueprint/model"
+import { completion } from "@/lib/blueprint/fields"
 import {
   QUESTIONS,
-  completion,
   isQuestionId,
   readScale,
   scaleField,
@@ -222,11 +222,7 @@ export function Workspace({ id, initial }: { id: number; initial: Blueprint }) {
                     ...blueprint,
                     expression: {
                       ...expression,
-                      color: {
-                        temperature: preset.temperature,
-                        vibrancy: preset.vibrancy,
-                        palette: preset.palette,
-                      },
+                      color: { palette: preset.palette },
                     },
                   })
                 }

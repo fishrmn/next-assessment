@@ -116,7 +116,7 @@ export const DOCUMENT_SECTIONS: DocumentSection[] = [
         key: "body",
         label: "Description",
         generated: ({ expression }) => {
-          const words = describeColor(expression.color)
+          const words = describeColor(expression.color.palette)
           return words ? `Direction: ${words}.` : ""
         },
       },

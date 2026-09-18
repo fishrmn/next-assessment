@@ -14,7 +14,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Progress } from "@/components/ui/progress"
-import { completion } from "@/lib/blueprint/registry"
+import { completion } from "@/lib/blueprint/fields"
 import { listBlueprints } from "@/lib/blueprints"
 
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium" })

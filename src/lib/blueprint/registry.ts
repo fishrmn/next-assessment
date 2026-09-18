@@ -163,27 +163,18 @@ export function voiceSample(blueprint: Blueprint): string | null {
 /* Color                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export type PalettePreset = {
-  id: string
-  name: string
-  temperature: Scale
-  vibrancy: Scale
-  palette: Palette
-}
+export type PalettePreset = { id: string; name: string; palette: Palette }
 
-/**
- * Picking a preset writes the palette AND its direction (temperature, vibrancy)
- * in one move, so during intake the two can never disagree.
- */
+/** Starting points the agent can offer. Any four valid hex colors are accepted, not only these. */
 export const PALETTES: PalettePreset[] = [
-  { id: "ember", name: "Ember", temperature: 5, vibrancy: 5, palette: { primary: "#c2410c", secondary: "#7c2d12", accent: "#f59e0b", background: "#fff7ed" } },
-  { id: "clay", name: "Clay", temperature: 4, vibrancy: 2, palette: { primary: "#9a6a4f", secondary: "#5c4033", accent: "#d4a373", background: "#faf5ef" } },
-  { id: "blossom", name: "Blossom", temperature: 4, vibrancy: 3, palette: { primary: "#be4b7a", secondary: "#6d2e46", accent: "#f4a6c0", background: "#fff5f8" } },
-  { id: "forest", name: "Forest", temperature: 3, vibrancy: 2, palette: { primary: "#2f5d46", secondary: "#1b3a2b", accent: "#a3b18a", background: "#f4f7f1" } },
-  { id: "ink", name: "Ink", temperature: 3, vibrancy: 1, palette: { primary: "#18181b", secondary: "#52525b", accent: "#a1a1aa", background: "#fafafa" } },
-  { id: "ocean", name: "Ocean", temperature: 1, vibrancy: 4, palette: { primary: "#1d4ed8", secondary: "#1e3a8a", accent: "#38bdf8", background: "#f0f7ff" } },
-  { id: "fjord", name: "Fjord", temperature: 2, vibrancy: 2, palette: { primary: "#47607a", secondary: "#2b3a4a", accent: "#9db4c8", background: "#f3f6f9" } },
-  { id: "electric", name: "Electric", temperature: 2, vibrancy: 5, palette: { primary: "#6d28d9", secondary: "#2e1065", accent: "#22d3ee", background: "#f7f3ff" } },
+  { id: "ember", name: "Ember", palette: { primary: "#c2410c", secondary: "#7c2d12", accent: "#f59e0b", background: "#fff7ed" } },
+  { id: "clay", name: "Clay", palette: { primary: "#9a6a4f", secondary: "#5c4033", accent: "#d4a373", background: "#faf5ef" } },
+  { id: "blossom", name: "Blossom", palette: { primary: "#be4b7a", secondary: "#6d2e46", accent: "#f4a6c0", background: "#fff5f8" } },
+  { id: "forest", name: "Forest", palette: { primary: "#2f5d46", secondary: "#1b3a2b", accent: "#a3b18a", background: "#f4f7f1" } },
+  { id: "ink", name: "Ink", palette: { primary: "#18181b", secondary: "#52525b", accent: "#a1a1aa", background: "#fafafa" } },
+  { id: "ocean", name: "Ocean", palette: { primary: "#1d4ed8", secondary: "#1e3a8a", accent: "#38bdf8", background: "#f0f7ff" } },
+  { id: "fjord", name: "Fjord", palette: { primary: "#47607a", secondary: "#2b3a4a", accent: "#9db4c8", background: "#f3f6f9" } },
+  { id: "electric", name: "Electric", palette: { primary: "#6d28d9", secondary: "#2e1065", accent: "#22d3ee", background: "#f7f3ff" } },
 ]
 
 export function matchingPreset(palette: Palette | null): PalettePreset | null {
@@ -191,12 +182,30 @@ export function matchingPreset(palette: Palette | null): PalettePreset | null {
   return PALETTES.find((preset) => preset.palette.primary === palette.primary && preset.palette.accent === palette.accent) ?? null
 }
 
-const TEMPERATURE = ["Cool", "Cool-leaning", "Neutral", "Warm-leaning", "Warm"]
-const VIBRANCY = ["muted", "soft", "balanced", "lively", "vivid"]
+/** Hue (0-360) and saturation (0-1) of a #rrggbb color. */
+function hueAndSaturation(hex: string): { hue: number; saturation: number } {
+  const [r, g, b] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16) / 255)
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const delta = max - min
+  if (delta === 0) return { hue: 0, saturation: 0 }
+  const lightness = (max + min) / 2
+  const saturation = delta / (1 - Math.abs(2 * lightness - 1))
+  const sector = max === r ? ((g - b) / delta) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4
+  return { hue: (sector * 60 + 360) % 360, saturation }
+}
 
-export function describeColor(color: Blueprint["expression"]["color"]): string | null {
-  if (color.temperature === null || color.vibrancy === null) return null
-  return `${TEMPERATURE[color.temperature - 1]} and ${VIBRANCY[color.vibrancy - 1]}`
+/**
+ * The color direction in words ("Warm and vivid"), read off the primary color. It is computed,
+ * never stored: whoever picks the colors (a person or the agent) cannot contradict them.
+ */
+export function describeColor(palette: Palette | null): string | null {
+  if (!palette) return null
+  const { hue, saturation } = hueAndSaturation(palette.primary)
+  const vibrancy = saturation < 0.3 ? "muted" : saturation < 0.6 ? "balanced" : "vivid"
+  if (saturation < 0.12) return `Neutral and ${vibrancy}`
+  const temperature = hue < 75 || hue >= 300 ? "Warm" : hue >= 150 && hue < 270 ? "Cool" : "Fresh"
+  return `${temperature} and ${vibrancy}`
 }
 
 /** Black or white, whichever reads better on the given hex background. */
@@ -289,10 +298,4 @@ export function sectionStatus(blueprint: Blueprint, section: Section): SectionSt
   const answered = section.questions.filter((question) => isAnswered(blueprint, question)).length
   if (answered === 0) return "empty"
   return answered === section.questions.length ? "done" : "partial"
-}
-
-/** Share of questions answered, 0 to 100. */
-export function completion(blueprint: Blueprint): number {
-  const answered = QUESTIONS.filter((question) => isAnswered(blueprint, question)).length
-  return Math.round((answered / QUESTIONS.length) * 100)
 }

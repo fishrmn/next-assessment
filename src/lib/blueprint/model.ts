@@ -2,8 +2,8 @@
  * The Brand Blueprint model.
  *
  * One plain JSON object holds everything a client told us. It is the single
- * contract between the intake (writes it), the Blueprint document (renders it),
- * the database (stores it) and the Phase 2 AI edit (rewrites it).
+ * contract between the agent (patches it), the Blueprint document (renders it)
+ * and the database (stores it).
  *
  * Two rules keep it simple:
  * - It stores inputs only. Labels, sample copy and completion are derived.
@@ -106,11 +106,8 @@ export type Blueprint = {
       density: ScaleValue
       era: ScaleValue
     }
-    color: {
-      temperature: ScaleValue
-      vibrancy: ScaleValue
-      palette: Palette | null
-    }
+    /** Only the colors are stored. "Warm and vivid" is derived from them (`describeColor`), so the two cannot disagree. */
+    color: { palette: Palette | null }
     typography: { pairing: FontPairing | null }
   }
   /**
@@ -137,7 +134,7 @@ export function emptyBlueprint(name = ""): Blueprint {
       personality: [],
       tone: { formality: null, humor: null, attitude: null, energy: null },
       visual: { density: null, era: null },
-      color: { temperature: null, vibrancy: null, palette: null },
+      color: { palette: null },
       typography: { pairing: null },
     },
     copy: {},
@@ -199,8 +196,8 @@ function copy(value: unknown): Blueprint["copy"] {
  * their check, everything else falls back to "unanswered".
  *
  * This is the only gate for untrusted input. It runs on data read from the
- * database, on data sent by the browser, and (Phase 2) on data returned by the
- * AI model, so none of those three can store a Blueprint the UI cannot render.
+ * database, on data sent by the browser, and on every patch the AI agent
+ * proposes, so none of those three can store a Blueprint the UI cannot render.
  */
 export function normalizeBlueprint(input: unknown): Blueprint {
   const root = record(input)
@@ -247,11 +244,7 @@ export function normalizeBlueprint(input: unknown): Blueprint {
         energy: scale(tone.energy),
       },
       visual: { density: scale(visual.density), era: scale(visual.era) },
-      color: {
-        temperature: scale(color.temperature),
-        vibrancy: scale(color.vibrancy),
-        palette: palette(color.palette),
-      },
+      color: { palette: palette(color.palette) },
       typography: { pairing: oneOf(FONT_PAIRINGS, typography.pairing) },
     },
     copy: copy(root.copy),
