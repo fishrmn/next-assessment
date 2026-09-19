@@ -70,6 +70,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). The home page summarizes this brief and is yours to replace as the app takes shape.
 
+> **Node version matters.** This repo pins Node `22.22.0` (see `.nvmrc`) and `better-sqlite3` compiles native bindings for whatever Node version is active during `npm install`. If you `npm install` under a different Node version, `npm install` will now fail with an `EBADENGINE` error (see `package.json` → `engines`) rather than silently installing broken bindings. If you still hit `Could not locate the bindings file` (e.g. `node_modules` was installed before pulling this fix, or you switched Node versions in place with `nvm use` without reinstalling), run:
+>
+> ```bash
+> nvm use
+> npm rebuild better-sqlite3 --build-from-source
+> ```
+
 ### Docker
 
 ```bash
