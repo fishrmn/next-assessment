@@ -13,7 +13,7 @@ import { fieldGuide } from "@/lib/blueprint/field-guide"
 import { missingFields } from "@/lib/blueprint/fields"
 import type { Blueprint } from "@/lib/blueprint/model"
 import { applyPatch, type Change, type Rejection } from "@/lib/blueprint/patch"
-import { patchSchema } from "@/lib/blueprint/patch-schema"
+import { patchFromToolInput, patchSchema } from "@/lib/blueprint/patch-schema"
 
 /** Any AI Gateway model id that supports tool calls. */
 export const DEFAULT_MODEL = "openai/gpt-5.6-luna"
@@ -44,15 +44,18 @@ export function buildInstructions(blueprint: Blueprint): string {
 
 HOW TO WORK
 - When the person tells you anything that belongs in the Blueprint, call updateBlueprint in that same turn. Do not ask for permission first. Put every field you can fill into one call.
+- Touch only what the request is about. Every field you are not changing is null. Never resend values that are already in the Blueprint.
+- Emptying a field is rare and explicit: list its path in "clear", and only when the person asks to remove something.
 - BUSINESS FACTS come only from the person. Never invent or guess a name, audience, goal, competitor or differentiator. If a fact is missing, ask for it.
 - BRAND EXPRESSION may be inferred. From how the person describes and expresses themselves, choose tone, personality, visual style, colors and typography. A wrong guess is cheap: they see it and correct you.
-- Relative requests move from the current value. "More playful" raises humor by one step, "much more" by two. If the scale has no value yet, set it to the leaning side (2 or 4).
+- "More playful" is relative: move humor one step from its current value, two steps for "much more". If the scale has no value yet, set it to the leaning side (2 or 4).
+- A comparison of the two poles is not relative. "We're more minimal than bold" or "casual, not formal" says which side the brand is on: put the scale on that side (2 or 4, or 1 or 5 when they are emphatic), whatever its current value.
 - A request about color ("warmer", "a darker green") means new hex colors. Keep the background very light or very dark so text stays readable.
 - After the tool returns, read "rejected". Fix what you can with another call; otherwise tell the person plainly what could not be set.
 - Never say a change was made unless updateBlueprint returned it under "applied".
 
 HOW TO REPLY
-- Plain text, no markdown, no lists. One to three short sentences.
+- Plain text, no markdown, no lists. One to three short sentences. Start by saying in a few words what you did.
 - Reply in the language the person writes in. Values you store stay as they said them.
 - Do not list the changes: the interface shows each one with an undo button.
 - End with exactly one question about the most useful thing still missing. Ask about business facts before expression. When nothing is missing, ask nothing and say the Blueprint is complete.
@@ -79,9 +82,9 @@ export function createBlueprintAgent(blueprint: Blueprint) {
     tools: {
       updateBlueprint: tool({
         description:
-          "Change the Brand Blueprint. Send only the fields to change; null clears a field. Returns `applied` (what really changed) and `rejected` (values that broke a rule, with the rule).",
+          "Change the Brand Blueprint. Give a value only for the fields to change and null for every other field: null leaves a field exactly as it is. To empty a field, name it in `clear`. Returns `applied` (what really changed) and `rejected` (values that broke a rule, with the rule).",
         inputSchema: patchSchema,
-        execute: async (patch): Promise<UpdateBlueprintOutput> => working.update(patch),
+        execute: async (input): Promise<UpdateBlueprintOutput> => working.update(patchFromToolInput(input)),
       }),
     },
     // One turn is: patch, maybe one correction, then the reply.

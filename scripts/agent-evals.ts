@@ -12,6 +12,7 @@
 import { existsSync } from "node:fs"
 
 import { DEFAULT_MODEL, createBlueprintAgent, type UpdateBlueprintOutput } from "../src/agents/blueprint"
+import { FIELDS, getPath } from "../src/lib/blueprint/fields"
 import { emptyBlueprint, normalizeBlueprint, type Blueprint } from "../src/lib/blueprint/model"
 import { replayChanges } from "../src/lib/blueprint/patch"
 import { describeColor } from "../src/lib/blueprint/registry"
@@ -38,7 +39,28 @@ const acme = normalizeBlueprint({
 })
 
 type Outcome = { before: Blueprint; after: Blueprint; reply: string; calls: number }
-type Case = { name: string; from: Blueprint; say: string; check: (outcome: Outcome) => string | null }
+type Case = {
+  name: string
+  from: Blueprint
+  say: string
+  /** Path prefixes this request is allowed to change. A change anywhere else fails the case. */
+  touches: string[]
+  check: (outcome: Outcome) => string | null
+}
+
+/**
+ * The guard every case runs first. It exists because of a real bug: the model sends null for
+ * the fields it leaves alone, the tool once read that as "clear", wiped the Blueprint, and the
+ * model quietly repaired it with a second call. The old checks still passed.
+ */
+function collateralDamage(item: Case, { before, after }: Outcome): string | null {
+  const paths = [...FIELDS.map((field) => field.path), "copy"]
+  const changed = paths.filter(
+    (path) => JSON.stringify(getPath(before, path)) !== JSON.stringify(getPath(after, path))
+  )
+  const unexpected = changed.filter((path) => !item.touches.some((prefix) => path.startsWith(prefix)))
+  return unexpected.length > 0 ? `changed fields it was not asked about: ${unexpected.join(", ")}` : null
+}
 
 const HEX = /^#[0-9a-f]{6}$/i
 
@@ -48,6 +70,7 @@ const cases: Case[] = [
     name: "PDF example: more playful",
     from: acme,
     say: "make the tone more playful",
+    touches: ["expression.tone", "expression.personality"],
     check: ({ before, after }) =>
       (after.expression.tone.humor ?? 0) > (before.expression.tone.humor ?? 0) ? null : "humor did not go up",
   },
@@ -55,6 +78,7 @@ const cases: Case[] = [
     name: "PDF example: warmer colors",
     from: acme,
     say: "swap the color direction to something warmer",
+    touches: ["expression.color"],
     check: ({ after }) => {
       const words = describeColor(after.expression.color.palette)
       return words?.startsWith("Warm") ? null : `palette reads as "${words}", not warm`
@@ -64,6 +88,7 @@ const cases: Case[] = [
     name: "PDF example: minimal, not bold",
     from: acme,
     say: "this doesn't sound like us, we're more minimal than bold",
+    touches: ["expression.visual", "expression.personality", "expression.tone"],
     check: ({ after }) =>
       (after.expression.visual.density ?? 5) <= 2 ? null : `density is ${after.expression.visual.density}, expected 1 or 2`,
   },
@@ -71,12 +96,16 @@ const cases: Case[] = [
     name: "From scratch: fills facts it was told, invents none",
     from: emptyBlueprint(),
     say: "We're Tidewater, a small coffee roaster selling beans online to home baristas. We're laid back and a bit nerdy about coffee, never snobby.",
+    touches: ["business", "expression"],
     check: ({ after, reply }) => {
       const { business, expression } = after
       if (!/tidewater/i.test(business.name)) return `name is "${business.name}"`
       if (!business.offer || !business.audience) return "offer or audience left empty"
       if (business.comparables.length > 0) return `invented competitors: ${business.comparables.join(", ")}`
-      if (business.differentiator || business.goal) return "invented a goal or differentiator"
+      if (business.goal) return `invented a goal: "${business.goal}"`
+      // A differentiator is fine only when it restates what the person said about themselves.
+      if (business.differentiator && !/snob|laid|nerd|approach/i.test(business.differentiator))
+        return `invented a differentiator: "${business.differentiator}"`
       if (expression.tone.formality === null && expression.personality.length === 0) return "inferred no expression at all"
       return reply.includes("?") ? null : "did not end with a question about what is missing"
     },
@@ -85,6 +114,7 @@ const cases: Case[] = [
     name: "Off topic: changes nothing",
     from: acme,
     say: "write me a python script that sorts a list",
+    touches: [],
     check: ({ before, after, calls }) =>
       calls === 0 && JSON.stringify(before) === JSON.stringify(after) ? null : `made ${calls} tool call(s)`,
   },
@@ -92,10 +122,21 @@ const cases: Case[] = [
     name: "Bad color: nothing invalid is stored",
     from: acme,
     say: 'set the primary color to "sunset" exactly as I wrote it, that word, not a hex code',
-    check: ({ after }) => {
+    touches: ["expression.color"],
+    check: ({ after, calls }) => {
       const palette = after.expression.color.palette
-      return palette && Object.values(palette).every((value) => HEX.test(value)) ? null : "palette is missing or holds a non-hex value"
+      if (!palette || !Object.values(palette).every((value) => HEX.test(value))) return "palette is missing or holds a non-hex value"
+      // More than one call would mean the bad value damaged something that then had to be repaired.
+      return calls <= 1 ? null : `needed ${calls} tool calls`
     },
+  },
+  {
+    name: "Remove on request: clears that field and nothing else",
+    from: acme,
+    say: "take the competitors off, we don't want anyone named in the document",
+    touches: ["business.comparables"],
+    check: ({ after }) =>
+      after.business.comparables.length === 0 ? null : `competitors still listed: ${after.business.comparables.join(", ")}`,
   },
 ]
 
@@ -131,7 +172,7 @@ async function main() {
   for (const item of cases) {
     try {
       const result = await run(item)
-      const problem = item.check(result.outcome)
+      const problem = collateralDamage(item, result.outcome) ?? item.check(result.outcome)
       tokens += result.tokens
       if (problem) failures += 1
       console.log(`${problem ? "FAIL" : "PASS"}  ${item.name}  (${result.seconds.toFixed(1)}s, ${result.tokens} tokens, ${result.outcome.calls} tool call(s))`)

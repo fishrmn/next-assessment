@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { emptyBlueprint, normalizeBlueprint } from "./model"
 import { applyPatch, revertChanges } from "./patch"
-import { patchSchema } from "./patch-schema"
+import { patchFromToolInput, patchSchema } from "./patch-schema"
 
 const acme = normalizeBlueprint({
   business: { name: "Acme", offer: "run payroll" },
@@ -72,12 +72,26 @@ describe("applyPatch", () => {
     expect(rejected[0].reason).toContain("#rrggbb")
   })
 
-  it("keeps at most three traits and says so", () => {
-    const { blueprint, rejected } = applyPatch(acme, {
+  it("refuses a fourth trait and keeps the traits it had", () => {
+    const { blueprint, applied, rejected } = applyPatch(acme, {
       expression: { personality: ["Bold", "Warm", "Calm", "Expert"] },
     })
-    expect(blueprint.expression.personality).toEqual(["Bold", "Warm", "Calm"])
+    expect(blueprint.expression.personality).toEqual(["Bold"])
+    expect(applied).toEqual([])
     expect(rejected[0].path).toBe("expression.personality")
+  })
+
+  it("never lets a rejected value destroy the value that was there", () => {
+    const palette = { primary: "#c2410c", secondary: "#7c2d12", accent: "#f59e0b", background: "#fff7ed" }
+    const colored = applyPatch(acme, { expression: { color: { palette } } }).blueprint
+
+    const { blueprint, applied, rejected } = applyPatch(colored, {
+      expression: { color: { palette: { primary: "sunset" } }, tone: { humor: 9 } },
+    })
+    expect(blueprint.expression.color.palette).toEqual(palette)
+    expect(blueprint.expression.tone.humor).toBe(2)
+    expect(applied).toEqual([])
+    expect(rejected.map((item) => item.path)).toEqual(["expression.color.palette", "expression.tone.humor"])
   })
 
   it("rewords document text, and null restores the generated text", () => {
@@ -134,5 +148,46 @@ describe("patchSchema", () => {
   it("refuses values outside the Blueprint's lists", () => {
     expect(patchSchema.safeParse({ expression: { personality: ["Invented"] } }).success).toBe(false)
     expect(patchSchema.safeParse({ expression: { tone: { humor: 7 } } }).success).toBe(false)
+  })
+})
+
+describe("patchFromToolInput", () => {
+  // What the model really sends for "more playful": a value for one field, null for all the rest.
+  const morePlayful = {
+    business: { name: null, industry: null, offer: null, audience: null, goal: null, comparables: null, differentiator: null },
+    expression: {
+      personality: null,
+      tone: { formality: null, humor: 4, attitude: null, energy: null },
+      visual: { density: null, era: null },
+      color: { palette: null },
+      typography: { pairing: null },
+    },
+    copy: { hero: null, voice: null },
+    clear: null,
+  }
+
+  it("reads null as 'leave alone', so a small request cannot wipe the Blueprint", () => {
+    expect(patchSchema.safeParse(morePlayful).success).toBe(true)
+    expect(patchFromToolInput(morePlayful)).toEqual({ expression: { tone: { humor: 4 } } })
+
+    const { blueprint, applied } = applyPatch(acme, patchFromToolInput(morePlayful))
+    expect(applied.map((change) => change.path)).toEqual(["expression.tone.humor"])
+    expect(blueprint.business).toEqual(acme.business)
+    expect(blueprint.expression.personality).toEqual(["Bold"])
+  })
+
+  it("clears only the fields named in `clear`", () => {
+    const patch = patchFromToolInput({ clear: ["business.offer", "copy.voice.title"] })
+    expect(patch).toEqual({ business: { offer: null }, copy: { voice: { title: null } } })
+
+    const reworded = applyPatch(acme, { copy: { voice: { title: "How we talk", body: "Like this." } } }).blueprint
+    const { blueprint, applied } = applyPatch(reworded, patch)
+    expect(blueprint.business.offer).toBe("")
+    expect(blueprint.copy).toEqual({ voice: { body: "Like this." } })
+    expect(applied).toHaveLength(2)
+  })
+
+  it("refuses to clear a path that is not a field", () => {
+    expect(patchSchema.safeParse({ clear: ["business.revenue"] }).success).toBe(false)
   })
 })

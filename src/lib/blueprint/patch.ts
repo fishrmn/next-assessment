@@ -9,7 +9,8 @@
  * (the same gate as every other input), and the result is compared with what was asked:
  * - `applied`: fields whose value really changed, with before and after.
  * - `rejected`: fields where the gate refused or altered the requested value, with the rule,
- *   so the agent can correct itself in the same turn.
+ *   so the agent can correct itself in the same turn. A rejected field keeps the value it had:
+ *   a bad request never destroys good data (one invalid color must not erase the palette).
  */
 import { SCALES, describeColor, describeScale, fontInfo } from "./registry"
 import { FIELDS, getPath } from "./fields"
@@ -136,31 +137,39 @@ function ruleFor(path: string): string {
 }
 
 export function applyPatch(blueprint: Blueprint, patch: unknown): PatchResult {
+  const paths = [...new Set(leafPaths(patch))]
   const wanted = merge(blueprint, patch)
-  const next = normalizeBlueprint(wanted)
-  const applied: Change[] = []
-  const rejected: Rejection[] = []
+  const gated = normalizeBlueprint(wanted)
 
-  for (const path of new Set(leafPaths(patch))) {
-    const before = getPath(blueprint, path)
-    const after = getPath(next, path)
+  const rejected: Rejection[] = []
+  const restore: Record<string, unknown> = {}
+  for (const path of paths) {
     const asked = getPath(wanted, path)
+    const result = getPath(gated, path)
     // Clearing a field is asked with null or ""; the gate stores it as null, "" or a missing key.
     const askedToClear = asked === null || asked === ""
-    const cleared = after === null || after === undefined || after === "" || equal(after, [])
-    if (askedToClear ? !cleared : !equal(after, asked)) {
-      rejected.push({ path, label: labelOf(path), reason: ruleFor(path) })
-    }
-    if (!equal(before, after)) {
-      applied.push({
-        path,
-        label: labelOf(path),
-        from: display(path, before),
-        to: display(path, after),
-        before: before ?? null,
-        after: after ?? null,
-      })
-    }
+    const cleared = result === null || result === undefined || result === "" || equal(result, [])
+    if (askedToClear ? cleared : equal(result, asked)) continue
+    rejected.push({ path, label: labelOf(path), reason: ruleFor(path) })
+    setPath(restore, path, getPath(blueprint, path) ?? null)
+  }
+
+  // Put the previous value back wherever the request was refused.
+  const next = rejected.length > 0 ? normalizeBlueprint(merge(gated, restore)) : gated
+
+  const applied: Change[] = []
+  for (const path of paths) {
+    const before = getPath(blueprint, path)
+    const after = getPath(next, path)
+    if (equal(before, after)) continue
+    applied.push({
+      path,
+      label: labelOf(path),
+      from: display(path, before),
+      to: display(path, after),
+      before: before ?? null,
+      after: after ?? null,
+    })
   }
 
   return { blueprint: next, applied, rejected }

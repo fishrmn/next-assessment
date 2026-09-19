@@ -1,7 +1,12 @@
 /**
- * The shape of a patch, as a Zod schema. It is what the AI model sees as the input of
- * its `updateBlueprint` tool, so every list here comes from `model.ts`: the model cannot
- * be offered a trait or a font that the Blueprint does not accept.
+ * The input of the agent's `updateBlueprint` tool, as a Zod schema. Every list here comes
+ * from `model.ts`: the model cannot be offered a trait or a font the Blueprint does not accept.
+ *
+ * In this input `null` means "leave this field alone". That is not a style choice: OpenAI's
+ * function calling makes the model fill in every property of the schema, so it sends `null`
+ * for everything it does not want to touch. Reading those nulls as "clear" wiped the whole
+ * Blueprint on a request as small as "more playful". Clearing is therefore a separate,
+ * explicit argument, `clear`, that the model has to name field by field.
  *
  * The schema guides the model; it is not the guard. `applyPatch` still runs every patch
  * through `normalizeBlueprint`. Hex colors are deliberately plain strings here: a bad
@@ -9,11 +14,19 @@
  */
 import { z } from "zod"
 
+import { DOCUMENT_SECTIONS } from "./document-sections"
+import { FIELDS } from "./fields"
 import { FONT_PAIRINGS, INDUSTRIES, MAX_TRAITS, SECTION_IDS, TRAITS } from "./model"
+
+/** Every path `clear` accepts: the Blueprint's fields, and each reworded text of the document. */
+export const CLEARABLE_PATHS = [
+  ...FIELDS.map((field) => field.path),
+  ...DOCUMENT_SECTIONS.flatMap((section) => section.slots.map((item) => `copy.${section.id}.${item.key}`)),
+] as [string, ...string[]]
 
 const text = z.string().nullable().optional()
 const scale = (poles: string) =>
-  z.number().int().min(1).max(5).nullable().optional().describe(`1 = ${poles.split("|")[0]}, 5 = ${poles.split("|")[1]}, 3 = in between, null = not decided`)
+  z.number().int().min(1).max(5).nullable().optional().describe(`1 = ${poles.split("|")[0]}, 5 = ${poles.split("|")[1]}, 3 = in between`)
 const hex = z.string().describe("#rrggbb").optional()
 
 const slot = z
@@ -59,7 +72,7 @@ export const patchSchema = z.object({
             .object({ primary: hex, secondary: hex, accent: hex, background: hex })
             .nullable()
             .optional()
-            .describe("Send all four colors when there is no palette yet. Send only the ones to change otherwise."),
+            .describe("Send all four colors when there is no palette yet. Otherwise send only the colors to change."),
         })
         .optional(),
       typography: z.object({ pairing: z.enum(FONT_PAIRINGS).nullable().optional() }).optional(),
@@ -68,7 +81,43 @@ export const patchSchema = z.object({
   copy: z
     .object(Object.fromEntries(SECTION_IDS.map((id) => [id, slot])) as Record<(typeof SECTION_IDS)[number], typeof slot>)
     .optional()
-    .describe("Rewording of the document's own titles and descriptions, per section. null restores the generated text."),
+    .describe("Rewording of the document's own titles and descriptions, per section."),
+  clear: z
+    .array(z.enum(CLEARABLE_PATHS))
+    .nullable()
+    .optional()
+    .describe(
+      'Fields to empty, as paths such as "business.goal" or "copy.voice.title" (which restores the generated text). Only when the person asks to remove something.'
+    ),
 })
 
 export type PatchInput = z.infer<typeof patchSchema>
+
+function withoutNulls(value: unknown): unknown {
+  if (Array.isArray(value) || typeof value !== "object" || value === null) return value
+  const entries = Object.entries(value)
+    .filter(([, item]) => item !== null)
+    .map(([key, item]) => [key, withoutNulls(item)] as const)
+    .filter(([, item]) => !(typeof item === "object" && item !== null && !Array.isArray(item) && Object.keys(item).length === 0))
+  return Object.fromEntries(entries)
+}
+
+/**
+ * Turns the tool's input into a patch for `applyPatch`, where `null` does mean "clear":
+ * every null the model sent is dropped (leave alone), and only the paths named in `clear`
+ * become nulls.
+ */
+export function patchFromToolInput(input: PatchInput): Record<string, unknown> {
+  const { clear, ...fields } = input
+  const patch = withoutNulls(fields) as Record<string, unknown>
+  for (const path of clear ?? []) {
+    const keys = path.split(".")
+    let node = patch
+    for (const key of keys.slice(0, -1)) {
+      if (typeof node[key] !== "object" || node[key] === null) node[key] = {}
+      node = node[key] as Record<string, unknown>
+    }
+    node[keys[keys.length - 1]] = null
+  }
+  return patch
+}
