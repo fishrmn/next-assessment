@@ -18,21 +18,15 @@ import {
 } from "@/components/ui/message-scroller"
 import { Spinner } from "@/components/ui/spinner"
 
-export type Stage = "empty" | "partial" | "filled"
+export type Stage = "partial" | "filled"
 
 const greetings: Record<Stage, { text: string; suggestions: string[] }> = {
-  empty: {
-    text: "Tell me about the brand in your own words, or paste the About page of its website. I'll fill in the blueprint as we talk.",
-    suggestions: [
-      "We're Acme, a payroll startup for small businesses. Friendly and a bit cheeky, but serious about money.",
-    ],
-  },
   partial: {
-    text: "This blueprint is part of the way there. Tell me more about the brand, or ask me what is still missing.",
-    suggestions: ["What is still missing?"],
+    text: "Tell me more about the brand, or ask me what is still open. Click any part of the blueprint to talk about it.",
+    suggestions: ["What is still open?"],
   },
   filled: {
-    text: "Tell me what to change, in your own words. I'll update the blueprint and show you every change.",
+    text: "Does this feel like the brand? Tell me what doesn't, in your own words, or click the part that feels off.",
     suggestions: ["Make the tone more playful", "Swap the colors for something warmer", "We're more minimal than bold"],
   },
 }
@@ -58,7 +52,7 @@ function Greeting({ stage }: { stage: Stage }) {
               onClick={() => send(suggestion)}
               className="h-auto max-w-full justify-start py-1.5 text-left whitespace-normal"
             >
-              {stage === "empty" ? `Try an example: “${suggestion}”` : suggestion}
+              {suggestion}
             </Button>
           ))}
         </div>
@@ -71,7 +65,7 @@ function Greeting({ stage }: { stage: Stage }) {
  * The conversation. A user message is a bubble on the right. An assistant message is drawn
  * part by part: text as plain text, and each `updateBlueprint` call as its list of changes.
  */
-export function BlueprintChatMessages({ stage }: { stage: Stage }) {
+export function BlueprintChatMessages({ stage }: { stage: Stage | null }) {
   const { messages, busy, error, retry, canUndo, undone, undo } = useBlueprintChat()
   const last = messages[messages.length - 1]
   const waiting = busy && (last?.role !== "assistant" || last.parts.length === 0)
@@ -81,15 +75,22 @@ export function BlueprintChatMessages({ stage }: { stage: Stage }) {
       <MessageScroller>
         <MessageScrollerViewport aria-label="Conversation">
           <MessageScrollerContent className="gap-4 p-4">
-            <MessageScrollerItem>
-              <Greeting stage={stage} />
-            </MessageScrollerItem>
+            {stage && (
+              <MessageScrollerItem>
+                <Greeting stage={stage} />
+              </MessageScrollerItem>
+            )}
 
             {messages.map((message) => (
               <MessageScrollerItem key={message.id} scrollAnchor={message.role === "user"}>
                 <Message align={message.role === "user" ? "end" : "start"}>
                   <MessageContent>
-                    {message.parts.map((part, index) => {
+                    {/* The agent's words first (what and why), then what it changed. The stream
+                        delivers them the other way round. */}
+                    {[
+                      ...message.parts.filter((part) => part.type === "text"),
+                      ...message.parts.filter((part) => part.type === "tool-updateBlueprint"),
+                    ].map((part, index) => {
                       if (part.type === "text") {
                         if (!part.text) return null
                         return (
@@ -130,7 +131,7 @@ export function BlueprintChatMessages({ stage }: { stage: Stage }) {
                           <MarkerIcon>
                             <Spinner />
                           </MarkerIcon>
-                          <MarkerContent>Updating the blueprint</MarkerContent>
+                          <MarkerContent>Working on the blueprint</MarkerContent>
                         </Marker>
                       )
                     })}

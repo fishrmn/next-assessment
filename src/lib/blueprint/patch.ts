@@ -31,6 +31,7 @@ import {
 type CopyPatch = { title?: string | null; body?: string | null }
 
 export type BlueprintPatch = {
+  direction?: Partial<Record<keyof Blueprint["direction"], string | null>>
   business?: Partial<{
     [Key in keyof Blueprint["business"]]: Blueprint["business"][Key] | null
   }>
@@ -133,6 +134,7 @@ function ruleFor(path: string): string {
   if (path === "business.comparables") return "a list of at most 5 short names"
   if (path.startsWith("copy.")) return "unknown section or text too long (title 80, body 400 characters)"
   if (path.startsWith("business.")) return "must be text of at most 200 characters (brand name: 80)"
+  if (path.startsWith("direction.")) return "must be text (headline at most 120 characters, rationale 400)"
   return "not a field of the Blueprint"
 }
 

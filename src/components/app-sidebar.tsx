@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutGridIcon, PlusIcon, SwatchBookIcon } from "lucide-react"
+import { CheckIcon, LayoutGridIcon, PlusIcon, SwatchBookIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -21,12 +21,12 @@ import {
 } from "@/components/ui/sidebar"
 
 /** What the sidebar needs per Blueprint. Computed on the server by the layout. */
-export type SidebarBlueprint = { id: number; name: string; percent: number }
+export type SidebarBlueprint = { id: number; name: string; reviewed: boolean }
 
 /**
  * The app's sidebar, following shadcn's documented anatomy: a header with the logo box and a
- * two-line text block, then one group listing every saved Blueprint with how much of it is
- * captured. "New blueprint" is a plain form: it creates the row and opens its chat.
+ * two-line text block, then one group listing every saved Blueprint, with a check on the ones
+ * the client has confirmed. "New blueprint" is a plain form: it creates the row and opens its chat.
  */
 export function AppSidebar({ blueprints }: { blueprints: SidebarBlueprint[] }) {
   const pathname = usePathname()
@@ -89,7 +89,11 @@ export function AppSidebar({ blueprints }: { blueprints: SidebarBlueprint[] }) {
                       </span>
                       <span>{blueprint.name}</span>
                     </SidebarMenuButton>
-                    <SidebarMenuBadge className="tabular-nums">{blueprint.percent}%</SidebarMenuBadge>
+                    {blueprint.reviewed && (
+                      <SidebarMenuBadge>
+                        <CheckIcon className="size-3.5" aria-label="Reviewed with the client" />
+                      </SidebarMenuBadge>
+                    )}
                   </SidebarMenuItem>
                 )
               })}

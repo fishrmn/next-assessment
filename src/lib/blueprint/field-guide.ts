@@ -36,6 +36,9 @@ color.palette is four #rrggbb colors: primary (header background), secondary, ac
 ${palettes}
 "Warm", "cool", "muted", "vivid" are not stored: they are read off the primary color. To make a brand warmer, change the colors.
 
-DOCUMENT TEXT (copy.<section>.<title|body>) — rewording of what the one-pager prints. Use it only when the person asks to reword the document itself. Sections:
-${sections}`
+DIRECTION (direction.headline, direction.rationale) — the proposal in one line and why. The person reads it before anything else.
+
+DOCUMENT TEXT (copy.<section>.<title|body>) — the words the one-pager prints. Sections:
+${sections}
+Titles have good defaults: change one only when the person asks, or to translate it as PROPOSAL TEXTS describes. Bodies are yours to write as described there.`
 }

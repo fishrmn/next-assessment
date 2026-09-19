@@ -30,7 +30,19 @@ export const FIELDS: Field[] = [
   { path: "expression.visual.era", label: "Visual era", kind: "expression" },
   { path: "expression.color.palette", label: "Color palette", kind: "expression" },
   { path: "expression.typography.pairing", label: "Typography", kind: "expression" },
+  { path: "direction.headline", label: "Brand direction", kind: "expression" },
+  { path: "direction.rationale", label: "Why this direction", kind: "expression" },
 ]
+
+export type Stage = "start" | "proposal"
+
+/** "start" until there is something worth showing: what the business does, or any brand expression. */
+export function stageOf(blueprint: Blueprint): Stage {
+  const shown = FIELDS.some(
+    (field) => field.path !== "business.name" && field.path !== "business.industry" && isFilled(blueprint, field.path)
+  )
+  return shown ? "proposal" : "start"
+}
 
 /** Reads a dotted path. Returns undefined when any step is missing. */
 export function getPath(source: unknown, path: string): unknown {
@@ -56,4 +68,37 @@ export function missingFields(blueprint: Blueprint): Field[] {
 export function completion(blueprint: Blueprint): number {
   const filled = FIELDS.length - missingFields(blueprint).length
   return Math.round((filled / FIELDS.length) * 100)
+}
+
+export type Status = "First proposal" | "In review" | "Reviewed with you"
+
+/**
+ * Where a Blueprint stands, in words a person understands (a percentage says nothing about
+ * whether the brand feels right). `updates` is how many times the agent has changed it:
+ * the first change is the proposal, every later one is review. "Reviewed with you" is never
+ * inferred: only the person can say it, and any later change takes it back.
+ */
+export function statusOf(blueprint: Blueprint, updates: number): Status | null {
+  if (stageOf(blueprint) === "start") return null
+  if (blueprint.review.confirmed) return "Reviewed with you"
+  return updates <= 1 ? "First proposal" : "In review"
+}
+
+/** Counts finished agent updates in stored chat messages, without trusting their shape. */
+export function countUpdates(messages: unknown[]): number {
+  let count = 0
+  for (const message of messages) {
+    const parts = (message as { parts?: unknown })?.parts
+    if (!Array.isArray(parts)) continue
+    for (const part of parts) {
+      const { type, state } = (part ?? {}) as { type?: unknown; state?: unknown }
+      if (type === "tool-updateBlueprint" && state === "output-available") count += 1
+    }
+  }
+  return count
+}
+
+/** Business facts nobody has given yet. These are worth a line on screen; open expression is not. */
+export function openFacts(blueprint: Blueprint): Field[] {
+  return missingFields(blueprint).filter((field) => field.kind === "fact")
 }

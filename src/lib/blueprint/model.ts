@@ -82,6 +82,15 @@ export type Palette = {
 
 export type Blueprint = {
   version: 1
+  /**
+   * The proposal in one line, and why. Written by the agent with every proposal, in the
+   * person's language: "A close, everyday brand" / "We started from how you know regulars by
+   * name". It lets a person judge the direction before reading any detail, and tells apart
+   * what the agent decided from what the person said.
+   */
+  direction: { headline: string; rationale: string }
+  /** True once the person said the Blueprint represents them. Any later change sets it back to false. */
+  review: { confirmed: boolean }
   business: {
     name: string
     industry: Industry | ""
@@ -121,6 +130,8 @@ export type Blueprint = {
 export function emptyBlueprint(name = ""): Blueprint {
   return {
     version: 1,
+    direction: { headline: "", rationale: "" },
+    review: { confirmed: false },
     business: {
       name,
       industry: "",
@@ -201,6 +212,7 @@ function copy(value: unknown): Blueprint["copy"] {
  */
 export function normalizeBlueprint(input: unknown): Blueprint {
   const root = record(input)
+  const direction = record(root.direction)
   const business = record(root.business)
   const expression = record(root.expression)
   const tone = record(expression.tone)
@@ -217,6 +229,8 @@ export function normalizeBlueprint(input: unknown): Blueprint {
 
   return {
     version: 1,
+    direction: { headline: text(direction.headline, 120), rationale: text(direction.rationale, 400) },
+    review: { confirmed: record(root.review).confirmed === true },
     business: {
       name: text(business.name, 80),
       industry: oneOf(INDUSTRIES, business.industry) ?? "",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { emptyBlueprint, normalizeBlueprint } from "./model"
-import { completion } from "./fields"
+import { completion, stageOf } from "./fields"
 import { applyPatch } from "./patch"
 import { describeColor, describeScale, scaleField } from "./registry"
 
@@ -51,6 +51,26 @@ describe("normalizeBlueprint copy layer", () => {
   })
 })
 
+describe("direction and review", () => {
+  it("keeps the agent's direction and the person's confirmation", () => {
+    const result = normalizeBlueprint({
+      direction: { headline: "A close, everyday brand", rationale: 7 },
+      review: { confirmed: "yes" },
+    })
+    expect(result.direction).toEqual({ headline: "A close, everyday brand", rationale: "" })
+    // Only a real `true` counts as confirmed.
+    expect(result.review.confirmed).toBe(false)
+    expect(normalizeBlueprint({ review: { confirmed: true } }).review.confirmed).toBe(true)
+  })
+
+  it("stays at the start until there is something worth showing", () => {
+    expect(stageOf(emptyBlueprint("Patio"))).toBe("start")
+    expect(stageOf(normalizeBlueprint({ business: { name: "Patio", industry: "Food & beverage" } }))).toBe("start")
+    expect(stageOf(normalizeBlueprint({ business: { offer: "serve coffee" } }))).toBe("proposal")
+    expect(stageOf(normalizeBlueprint({ expression: { tone: { humor: 4 } } }))).toBe("proposal")
+  })
+})
+
 describe("registry", () => {
   it("describes a scale position in words", () => {
     const humor = scaleField("humor")
@@ -63,8 +83,8 @@ describe("registry", () => {
   it("counts filled fields", () => {
     const { blueprint } = applyPatch(emptyBlueprint("Acme"), { expression: { visual: { density: 2 } } })
     expect(completion(emptyBlueprint())).toBe(0)
-    // "Acme" and one scale: 2 of 16 fields.
-    expect(completion(blueprint)).toBe(13)
+    // "Acme" and one scale: 2 of 18 fields.
+    expect(completion(blueprint)).toBe(11)
   })
 
   it("reads the color direction off the primary color", () => {

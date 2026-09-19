@@ -44,6 +44,7 @@ describe("buildInstructions", () => {
 
   it("says nothing is missing for a complete Blueprint", () => {
     const blueprint = normalizeBlueprint({
+      direction: { headline: "Payroll without the drama", rationale: "They said: no sales call." },
       business: { name: "Acme", industry: "Finance", offer: "run payroll", audience: "small teams", goal: "grow", comparables: ["Gusto"], differentiator: "skip the sales call" },
       expression: {
         personality: ["Bold"],

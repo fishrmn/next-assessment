@@ -5,11 +5,18 @@ import { DefaultChatTransport } from "ai"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 
 import type { BlueprintMessage, UpdateBlueprintOutput } from "@/agents/blueprint"
-import type { Blueprint } from "@/lib/blueprint/model"
+import type { Blueprint, SectionId } from "@/lib/blueprint/model"
 import { replayChanges, revertChanges } from "@/lib/blueprint/patch"
+
+/** A part of the document the person pointed at, so their next message is about it. */
+export type About = { id: SectionId | "direction"; label: string }
 
 type BlueprintChat = {
   messages: BlueprintMessage[]
+  /** How many times the agent has changed the Blueprint in this conversation. */
+  updates: number
+  about: About | null
+  setAbout: (about: About | null) => void
   /** A turn is running: the message was sent, or the reply is streaming. */
   busy: boolean
   /** A readable error from the last turn, or null. */
@@ -93,6 +100,7 @@ export function BlueprintChatProvider({
   const applied = useRef(new Set(finishedUpdates(initialMessages).map((update) => update.toolCallId)))
   const [session, setSession] = useState<ReadonlySet<string>>(new Set())
   const [undone, setUndone] = useState<ReadonlySet<string>>(new Set())
+  const [about, setAbout] = useState<About | null>(null)
 
   useEffect(() => {
     const fresh = finishedUpdates(messages).filter((update) => !applied.current.has(update.toolCallId))
@@ -114,9 +122,17 @@ export function BlueprintChatProvider({
   const value = useMemo<BlueprintChat>(
     () => ({
       messages,
+      updates: finishedUpdates(messages).filter((update) => update.output.applied.length > 0).length,
+      about,
+      setAbout,
       busy: status === "submitted" || status === "streaming",
       error: status === "error" ? readable(error) : null,
-      send: (text) => void sendMessage({ text }, request()),
+      // The section the person pointed at travels inside the message, where both they and the
+      // agent can read it. No hidden channel.
+      send: (text) => {
+        void sendMessage({ text: about ? `About “${about.label}”: ${text}` : text }, request())
+        setAbout(null)
+      },
       stop: () => void stop(),
       retry: () => void regenerate(request()),
       canUndo: (toolCallId) => session.has(toolCallId),
@@ -128,7 +144,7 @@ export function BlueprintChatProvider({
         setUndone((previous) => new Set([...previous, toolCallId]))
       },
     }),
-    [messages, status, error, sendMessage, stop, regenerate, request, session, undone, onBlueprintChange]
+    [messages, status, error, sendMessage, stop, regenerate, request, session, undone, about, onBlueprintChange]
   )
 
   return <BlueprintChatContext.Provider value={value}>{children}</BlueprintChatContext.Provider>

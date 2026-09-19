@@ -1,16 +1,18 @@
 "use client"
 
-import { ArrowRightIcon, CircleAlertIcon, PencilLineIcon, Undo2Icon } from "lucide-react"
+import { ArrowRightIcon, ChevronDownIcon, CircleAlertIcon, Undo2Icon } from "lucide-react"
 
 import type { UpdateBlueprintOutput } from "@/agents/blueprint"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker"
 import { cn } from "@/lib/utils"
 
 /**
- * What one `updateBlueprint` call did, as the person should see it: one row per field with
- * before and after in words, the values the Blueprint refused, and an Undo for the whole call.
- * This is the agent's transparency: nothing changes on the document without a row here.
+ * What one agent update did. The agent's own sentence says what changed and why; this row sits
+ * under it with the two things a person needs next: take it back, or look closer. The field by
+ * field list (it can be fifteen rows) stays folded until asked for. Values the Blueprint
+ * refused are never folded away.
  */
 export function Changes({
   output,
@@ -22,23 +24,48 @@ export function Changes({
   /** Absent for changes restored from history: they are already part of the saved Blueprint. */
   onUndo?: () => void
 }) {
-  if (output.applied.length === 0 && output.rejected.length === 0) return null
+  const count = output.applied.length
+  if (count === 0 && output.rejected.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
-      {output.applied.map((change) => (
-        <Marker key={change.path} className={cn(undone && "line-through opacity-60")}>
-          <MarkerIcon>
-            <PencilLineIcon />
-          </MarkerIcon>
-          <MarkerContent className="flex flex-wrap items-center gap-x-1.5">
-            <span className="font-medium text-foreground">{change.label}</span>
-            <span className="max-w-full wrap-anywhere">{change.from}</span>
-            <ArrowRightIcon className="size-3 shrink-0" aria-label="changed to" />
-            <span className="max-w-full wrap-anywhere text-foreground">{change.to}</span>
-          </MarkerContent>
-        </Marker>
-      ))}
+    <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+      {count > 0 && (
+        <Collapsible>
+          <div className="flex flex-wrap items-center gap-x-1">
+            <span className={cn("tabular-nums", undone && "line-through")}>
+              {count === 1 ? "1 change" : `${count} changes`}
+            </span>
+            {undone ? (
+              <span>· Undone</span>
+            ) : (
+              onUndo && (
+                <Button variant="ghost" size="xs" onClick={onUndo}>
+                  <Undo2Icon />
+                  Undo
+                </Button>
+              )
+            )}
+            <CollapsibleTrigger
+              render={<Button variant="ghost" size="xs" className="group/details" />}
+            >
+              View details
+              <ChevronDownIcon className="transition-[rotate] duration-150 ease-out group-data-panel-open/details:rotate-180" />
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent>
+            <ul className={cn("mt-1.5 flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3", undone && "opacity-60")}>
+              {output.applied.map((change) => (
+                <li key={change.path} className="flex flex-wrap items-center gap-x-1.5">
+                  <span className="font-medium text-foreground">{change.label}</span>
+                  <span className="max-w-full wrap-anywhere">{change.from}</span>
+                  <ArrowRightIcon className="size-3 shrink-0" aria-label="changed to" />
+                  <span className="max-w-full wrap-anywhere text-foreground">{change.to}</span>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       {output.rejected.map((item) => (
         <Marker key={item.path}>
           <MarkerIcon>
@@ -49,18 +76,6 @@ export function Changes({
           </MarkerContent>
         </Marker>
       ))}
-      {output.applied.length > 0 && (onUndo || undone) && (
-        <div className="flex justify-end">
-          {undone ? (
-            <span className="text-xs text-muted-foreground">Undone</span>
-          ) : (
-            <Button variant="ghost" size="xs" onClick={onUndo}>
-              <Undo2Icon />
-              Undo
-            </Button>
-          )}
-        </div>
-      )}
     </div>
   )
 }

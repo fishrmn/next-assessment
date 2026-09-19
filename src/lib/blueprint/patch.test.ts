@@ -115,6 +115,14 @@ describe("applyPatch", () => {
     expect(rejected).toEqual([])
   })
 
+  it("writes the direction of a proposal like any other field", () => {
+    const { blueprint, applied } = applyPatch(acme, {
+      direction: { headline: "Payroll without the drama", rationale: "They said: no sales call." },
+    })
+    expect(blueprint.direction.headline).toBe("Payroll without the drama")
+    expect(applied.map((change) => change.label)).toEqual(["Brand direction", "Why this direction"])
+  })
+
   it("ignores fields that do not exist", () => {
     const { blueprint, applied, rejected } = applyPatch(acme, { business: { revenue: "1M" } })
     expect(blueprint).toEqual(acme)

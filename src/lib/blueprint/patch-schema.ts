@@ -38,6 +38,12 @@ const slot = z
   .optional()
 
 export const patchSchema = z.object({
+  direction: z
+    .object({
+      headline: z.string().max(120).nullable().optional().describe("The brand in one line of about six words, in the person's language"),
+      rationale: z.string().max(400).nullable().optional().describe("One or two sentences: which of the person's own words led to this direction"),
+    })
+    .optional(),
   business: z
     .object({
       name: text.describe("Brand name"),

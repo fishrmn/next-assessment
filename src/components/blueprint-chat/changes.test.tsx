@@ -14,12 +14,16 @@ const { applied, rejected } = applyPatch(emptyBlueprint("Acme"), {
 })
 
 describe("Changes", () => {
-  it("shows each change in words, and each refused value with its rule", () => {
+  it("folds the field-by-field list away, but never a refused value", async () => {
     render(<Changes output={{ applied, rejected }} undone={false} onUndo={() => {}} />)
 
-    expect(screen.getByText("Humor")).toBeDefined()
-    expect(screen.getByText("Leans playful")).toBeDefined()
+    expect(screen.getByText("1 change")).toBeDefined()
+    expect(screen.queryByText("Leans playful")).toBeNull()
     expect(screen.getByText(/was not set: must be one of: modern/)).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: /View details/ }))
+    expect(await screen.findByText("Leans playful")).toBeDefined()
+    expect(screen.getByText("Humor")).toBeDefined()
   })
 
   it("offers Undo for this session's changes only", () => {
@@ -32,7 +36,7 @@ describe("Changes", () => {
     expect(screen.queryByRole("button", { name: /Undo/ })).toBeNull()
 
     rerender(<Changes output={{ applied, rejected: [] }} undone />)
-    expect(screen.getByText("Undone")).toBeDefined()
+    expect(screen.getByText(/Undone/)).toBeDefined()
   })
 
   it("draws nothing for a call that changed nothing", () => {

@@ -1,14 +1,14 @@
 "use client"
 
-import { ArrowUpIcon, SquareIcon } from "lucide-react"
+import { ArrowUpIcon, SquareIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { useBlueprintChat } from "@/components/blueprint-chat/context"
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group"
 
 /** Enter sends, Shift+Enter adds a line. While a turn runs, the send button becomes Stop. */
-export function BlueprintChatInput() {
-  const { send, stop, busy } = useBlueprintChat()
+export function BlueprintChatInput({ placeholder }: { placeholder?: string }) {
+  const { send, stop, busy, about, setAbout } = useBlueprintChat()
   const [text, setText] = useState("")
   const field = useRef<HTMLTextAreaElement>(null)
   const wasBusy = useRef(false)
@@ -18,6 +18,11 @@ export function BlueprintChatInput() {
     if (wasBusy.current && !busy) field.current?.focus()
     wasBusy.current = busy
   }, [busy])
+
+  // Pointing at a part of the document is an invitation to type about it.
+  useEffect(() => {
+    if (about) field.current?.focus()
+  }, [about])
 
   function submit() {
     const message = text.trim()
@@ -34,6 +39,21 @@ export function BlueprintChatInput() {
       }}
     >
       <InputGroup>
+        {about && (
+          <InputGroupAddon align="block-start">
+            <span className="flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+              <span className="truncate">About “{about.label}”</span>
+              <button
+                type="button"
+                aria-label="Stop talking about this part"
+                onClick={() => setAbout(null)}
+                className="rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <XIcon className="size-3" />
+              </button>
+            </span>
+          </InputGroupAddon>
+        )}
         <InputGroupTextarea
           ref={field}
           value={text}
@@ -44,7 +64,7 @@ export function BlueprintChatInput() {
             submit()
           }}
           aria-label="Message to the blueprint agent"
-          placeholder="Describe the brand, or a change…"
+          placeholder={about ? "What feels off here?" : (placeholder ?? "Describe the brand, or a change…")}
           className="max-h-40 min-h-12"
           autoFocus
         />

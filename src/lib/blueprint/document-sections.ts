@@ -77,7 +77,15 @@ export const DOCUMENT_SECTIONS: DocumentSection[] = [
     ],
   },
   { id: "against", label: "Up against", slots: [title("Up against")] },
-  { id: "personality", label: "Personality", slots: [title("Personality")] },
+  {
+    id: "personality",
+    label: "Personality",
+    slots: [
+      title("Personality"),
+      // No generated text: only the agent can say how these traits show up for this business.
+      { key: "body", label: "How it shows", multiline: true, generated: () => "" },
+    ],
+  },
   {
     id: "voice",
     label: "Voice",

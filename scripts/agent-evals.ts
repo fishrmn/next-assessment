@@ -70,7 +70,8 @@ const cases: Case[] = [
     name: "PDF example: more playful",
     from: acme,
     say: "make the tone more playful",
-    touches: ["expression.tone", "expression.personality"],
+    // Changing the voice also rewrites the texts that show it.
+    touches: ["expression.tone", "expression.personality", "direction", "copy"],
     check: ({ before, after }) =>
       (after.expression.tone.humor ?? 0) > (before.expression.tone.humor ?? 0) ? null : "humor did not go up",
   },
@@ -78,7 +79,7 @@ const cases: Case[] = [
     name: "PDF example: warmer colors",
     from: acme,
     say: "swap the color direction to something warmer",
-    touches: ["expression.color"],
+    touches: ["expression.color", "direction", "copy"],
     check: ({ after }) => {
       const words = describeColor(after.expression.color.palette)
       return words?.startsWith("Warm") ? null : `palette reads as "${words}", not warm`
@@ -88,7 +89,7 @@ const cases: Case[] = [
     name: "PDF example: minimal, not bold",
     from: acme,
     say: "this doesn't sound like us, we're more minimal than bold",
-    touches: ["expression.visual", "expression.personality", "expression.tone"],
+    touches: ["expression.visual", "expression.personality", "expression.tone", "direction", "copy"],
     check: ({ after }) =>
       (after.expression.visual.density ?? 5) <= 2 ? null : `density is ${after.expression.visual.density}, expected 1 or 2`,
   },
@@ -96,7 +97,7 @@ const cases: Case[] = [
     name: "From scratch: fills facts it was told, invents none",
     from: emptyBlueprint(),
     say: "We're Tidewater, a small coffee roaster selling beans online to home baristas. We're laid back and a bit nerdy about coffee, never snobby.",
-    touches: ["business", "expression"],
+    touches: ["business", "expression", "direction", "copy"],
     check: ({ after, reply }) => {
       const { business, expression } = after
       if (!/tidewater/i.test(business.name)) return `name is "${business.name}"`
@@ -107,6 +108,9 @@ const cases: Case[] = [
       if (business.differentiator && !/snob|laid|nerd|approach/i.test(business.differentiator))
         return `invented a differentiator: "${business.differentiator}"`
       if (expression.tone.formality === null && expression.personality.length === 0) return "inferred no expression at all"
+      // A proposal a person can judge: the direction with its reason, and a line in the brand's voice.
+      if (!after.direction.headline || !after.direction.rationale) return "proposed no direction, or gave no reason for it"
+      if (!after.copy.voice?.body) return "wrote no sample line in the brand's voice"
       return reply.includes("?") ? null : "did not end with a question about what is missing"
     },
   },

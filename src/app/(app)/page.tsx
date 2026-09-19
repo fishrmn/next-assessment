@@ -21,8 +21,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Progress } from "@/components/ui/progress"
-import { completion } from "@/lib/blueprint/fields"
+import { countUpdates, statusOf } from "@/lib/blueprint/fields"
 import { listBlueprints } from "@/lib/blueprints"
 
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium" })
@@ -62,7 +61,7 @@ export default function BlueprintsPage() {
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {blueprints.map((blueprint) => {
-            const percent = completion(blueprint.data)
+            const status = statusOf(blueprint.data, countUpdates(blueprint.messages)) ?? "Not started"
             const palette = blueprint.data.expression.color.palette
             return (
               <li key={blueprint.id}>
@@ -99,10 +98,7 @@ export default function BlueprintsPage() {
                         <span className="flex-1 rounded-full border border-dashed" />
                       )}
                     </div>
-                    <Progress value={percent} aria-label="Captured" />
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      {percent}% captured
-                    </p>
+                    <p className="text-xs font-medium text-muted-foreground">{status}</p>
                   </CardContent>
                 </Card>
               </li>
