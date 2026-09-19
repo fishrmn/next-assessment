@@ -22,9 +22,9 @@ export type TextElementConfig = {
 }
 
 const levelStyles: Record<TextElementConfig["level"], string> = {
-  h1: "text-4xl font-bold tracking-tight sm:text-5xl",
-  h2: "text-2xl font-semibold tracking-tight sm:text-3xl",
-  h3: "text-xl font-semibold sm:text-2xl",
+  h1: "font-heading text-4xl font-bold tracking-tight sm:text-5xl",
+  h2: "font-heading text-2xl font-semibold tracking-tight sm:text-3xl",
+  h3: "text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase",
   p: "text-base leading-7",
 }
 

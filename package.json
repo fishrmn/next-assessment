@@ -18,6 +18,8 @@
     "db:reset": "tsx scripts/reset.ts && drizzle-kit push --force && tsx scripts/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "test:e2e": "playwright test",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -34,6 +36,7 @@
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
+    "openai": "^7.17.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shadcn": "^4.11.0",
@@ -41,6 +44,7 @@
     "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",

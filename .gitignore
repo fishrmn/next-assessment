@@ -26,6 +26,14 @@
 # sqlite database
 local.db
 local.db-*
+local.integration-test.db
+local.integration-test.db-*
+local.e2e-test.db
+local.e2e-test.db-*
+
+# playwright
+/playwright-report/
+/test-results/
 
 # misc
 .DS_Store
@@ -46,3 +54,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# oh my claude code files
+.omc
+
+# playwright-mcp operations
+.playwright-mcp/
