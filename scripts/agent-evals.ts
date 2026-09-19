@@ -20,7 +20,18 @@ import { describeColor } from "../src/lib/blueprint/registry"
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local")
 
+// A finished first proposal, texts included, because that is what every later request starts from.
+// With the texts missing, the agent rightly fills them in, and "changed only the colors" measures nothing.
 const acme = normalizeBlueprint({
+  direction: {
+    headline: "Payroll that gets out of your way",
+    rationale: "You said setup takes one afternoon and nobody has to sit through a sales call.",
+  },
+  copy: {
+    voice: { body: "Payroll is done. Go run your business." },
+    personality: { body: "We say what things cost, answer the phone, and skip the jargon." },
+    color: { body: "A confident blue with a light, airy background." },
+  },
   business: {
     name: "Acme Payroll",
     industry: "Finance",
@@ -106,8 +117,9 @@ const cases: Case[] = [
       const { business, expression } = after
       // Next steps that fit this brand, not the three stock phrases.
       if (suggestions.length < 2) return `offered ${suggestions.length} suggestion(s), expected 2 or 3`
-      if (suggestions.some((item) => /more playful|something warmer|minimal than bold/i.test(item)))
-        return `offered a generic suggestion: ${suggestions.join(" | ")}`
+      const stock = ["make the tone more playful", "swap the colors for something warmer", "we're more minimal than bold"]
+      if (suggestions.some((item) => stock.includes(item.trim().toLowerCase().replace(/[.!]$/, ""))))
+        return `offered a stock suggestion: ${suggestions.join(" | ")}`
       if (!/tidewater/i.test(business.name)) return `name is "${business.name}"`
       if (!business.offer || !business.audience) return "offer or audience left empty"
       if (business.comparables.length > 0) return `invented competitors: ${business.comparables.join(", ")}`
@@ -152,6 +164,29 @@ const cases: Case[] = [
       JSON.stringify(before.expression.color.palette) !== JSON.stringify(after.expression.color.palette)
         ? null
         : "the palette did not change",
+  },
+  {
+    name: "Spanish in, English document out",
+    from: emptyBlueprint(),
+    say: "Somos Patio, una cafetería de barrio en Cartago. Conocemos a los clientes por su nombre y queremos que se sientan en casa, no en un lugar de lujo.",
+    touches: ["business", "expression", "direction", "copy"],
+    check: ({ after }) => {
+      // A rough check, not a language detector: Spanish accents, or common Spanish function words.
+      const spanish = /[áéíóúñ¿¡]|\b(para|con|los|las|una|que|donde|somos|nuestros?)\b/i
+      // "café" is an English word too, and the rationale may quote the person, so neither counts.
+      const stored = Object.fromEntries(
+        Object.entries({
+          "direction.headline": after.direction.headline,
+          "business.offer": after.business.offer,
+          "business.audience": after.business.audience,
+          "copy.voice.body": after.copy.voice?.body ?? "",
+          "copy.personality.body": after.copy.personality?.body ?? "",
+        }).map(([path, value]) => [path, value.replace(/café/gi, "cafe")])
+      )
+      const offenders = Object.entries(stored).filter(([, value]) => spanish.test(value))
+      if (offenders.length > 0) return `stored Spanish in ${offenders.map(([path, value]) => `${path}: "${value}"`).join("; ")}`
+      return /patio/i.test(after.business.name) ? null : `name is "${after.business.name}"`
+    },
   },
   {
     name: "“We have none”: leaves the fact open and stops asking",

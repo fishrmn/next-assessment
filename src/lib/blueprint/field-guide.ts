@@ -40,5 +40,5 @@ DIRECTION (direction.headline, direction.rationale) — the proposal in one line
 
 DOCUMENT TEXT (copy.<section>.<title|body>) — the words the one-pager prints. Sections:
 ${sections}
-Titles have good defaults: change one only when the person asks, or to translate it as PROPOSAL TEXTS describes. Bodies are yours to write as described there.`
+Titles have good defaults: change one only when the person asks. Bodies are yours to write as PROPOSAL TEXTS describes.`
 }

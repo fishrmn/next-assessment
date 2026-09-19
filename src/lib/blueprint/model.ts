@@ -94,8 +94,7 @@ export type Palette = {
 export type Blueprint = {
   version: 1
   /**
-   * The proposal in one line, and why. Written by the agent with every proposal, in the
-   * person's language: "A close, everyday brand" / "We started from how you know regulars by
+   * The proposal in one line, and why. Written by the agent with every proposal: "A close, everyday brand" / "We started from how you know regulars by
    * name". It lets a person judge the direction before reading any detail, and tells apart
    * what the agent decided from what the person said.
    */

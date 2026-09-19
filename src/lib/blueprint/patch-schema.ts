@@ -31,8 +31,8 @@ const hex = z.string().describe("#rrggbb").optional()
 
 const slot = z
   .object({
-    title: z.string().max(80).nullable().optional(),
-    body: z.string().max(400).nullable().optional(),
+    title: z.string().max(80).nullable().optional().describe("In English"),
+    body: z.string().max(400).nullable().optional().describe("In English"),
   })
   .nullable()
   .optional()
@@ -40,19 +40,19 @@ const slot = z
 export const patchSchema = z.object({
   direction: z
     .object({
-      headline: z.string().max(120).nullable().optional().describe("The brand in one line of about six words, in the person's language"),
-      rationale: z.string().max(400).nullable().optional().describe("One or two sentences: which of the person's own words led to this direction"),
+      headline: z.string().max(120).nullable().optional().describe("The brand in one line of about six words. In English, whatever language the person writes in"),
+      rationale: z.string().max(400).nullable().optional().describe("One or two sentences, in English: which of the person's own words led to this direction"),
     })
     .optional(),
   business: z
     .object({
       name: text.describe("Brand name"),
       industry: z.enum(INDUSTRIES).nullable().optional(),
-      offer: text.describe('What they do, as a verb phrase that reads well after "We": "run payroll in minutes"'),
-      audience: text.describe('Who they serve: "small business owners"'),
-      goal: text.describe('What they want to achieve now, as a verb phrase after "we want to"'),
+      offer: text.describe('In English. What they do, as a verb phrase that reads well after "We": "run payroll in minutes"'),
+      audience: text.describe('In English. Who they serve: "small business owners"'),
+      goal: text.describe('In English. What they want to achieve now, as a verb phrase after "we want to"'),
       comparables: z.array(z.string()).max(5).nullable().optional().describe("Competitors or comparable brands the person named"),
-      differentiator: text.describe('What sets them apart, as a verb phrase that reads well after "We"'),
+      differentiator: text.describe('In English. What sets them apart, as a verb phrase that reads well after "We"'),
     })
     .optional(),
   expression: z
