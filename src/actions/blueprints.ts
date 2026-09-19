@@ -47,3 +47,20 @@ export async function saveBlueprint(
   revalidatePath("/", "layout")
   return { ok: true, message: "Saved" }
 }
+
+/**
+ * Deletes a Blueprint with its chat history. There is no undo, so the UI asks first
+ * (`components/delete-blueprint.tsx`). From inside the Blueprint's own workspace the person is
+ * sent to the list, because the screen they were on no longer exists.
+ */
+export async function deleteBlueprint(
+  id: number,
+  from: "workspace" | "list"
+): Promise<{ ok: boolean; message: string }> {
+  const result = db.delete(blueprints).where(eq(blueprints.id, id)).run()
+  revalidatePath("/", "layout")
+  if (from === "workspace") redirect("/")
+  return result.changes > 0
+    ? { ok: true, message: "Blueprint deleted" }
+    : { ok: false, message: "This blueprint was already deleted." }
+}

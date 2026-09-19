@@ -9,6 +9,7 @@ import type { BlueprintMessage } from "@/agents/blueprint"
 import { saveBlueprint } from "@/actions/blueprints"
 import { BlueprintChat } from "@/components/blueprint-chat"
 import { BlueprintDocument } from "@/components/blueprint/blueprint-document"
+import { DeleteBlueprint } from "@/components/delete-blueprint"
 import { PageHeader } from "@/components/page-header"
 import { buttonVariants } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -74,6 +75,7 @@ export function Workspace({
               <MaximizeIcon />
               Present
             </Link>
+            <DeleteBlueprint id={id} name={blueprint.business.name || "Untitled brand"} from="workspace" />
           </>
         }
       />

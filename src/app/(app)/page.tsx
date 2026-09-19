@@ -2,9 +2,17 @@ import { PlusIcon, SwatchBookIcon } from "lucide-react"
 import Link from "next/link"
 
 import { createBlueprint } from "@/actions/blueprints"
+import { DeleteBlueprint } from "@/components/delete-blueprint"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   Empty,
   EmptyContent,
@@ -72,6 +80,10 @@ export default function BlueprintsPage() {
                       {blueprint.data.business.industry || "Industry not set"} · Updated{" "}
                       {dateFormat.format(blueprint.updatedAt)}
                     </CardDescription>
+                    {/* The whole card is a link (the title's ::after covers it); `z-10` lifts this button above it. */}
+                    <CardAction className="relative z-10">
+                      <DeleteBlueprint id={blueprint.id} name={blueprint.name} from="list" />
+                    </CardAction>
                   </CardHeader>
                   <CardContent className="mt-auto flex flex-col gap-3">
                     <div className="flex h-2 gap-1">
