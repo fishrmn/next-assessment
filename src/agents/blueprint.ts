@@ -83,6 +83,7 @@ THE FIELDS
 ${fieldGuide()}
 
 CURRENT BLUEPRINT
+This is the truth, whatever the conversation says: the person can undo any of your earlier changes.
 ${JSON.stringify(blueprint)}
 
 ${

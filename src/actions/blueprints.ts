@@ -64,3 +64,12 @@ export async function deleteBlueprint(
     ? { ok: true, message: "Blueprint deleted" }
     : { ok: false, message: "This blueprint was already deleted." }
 }
+
+/**
+ * Remembers which of the agent's changes the person undid, so a reload still shows them as
+ * "Undone". The undo itself is already in the Blueprint, saved by the autosave.
+ */
+export async function saveUndone(id: number, toolCallIds: string[]): Promise<void> {
+  const undone = [...new Set(toolCallIds.filter((item) => typeof item === "string"))].slice(-200)
+  db.update(blueprints).set({ undone }).where(eq(blueprints.id, id)).run()
+}

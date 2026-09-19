@@ -19,6 +19,7 @@ export default async function BlueprintPage({
       id={blueprint.id}
       initial={blueprint.data}
       initialMessages={await loadChat(blueprint.messages, blueprint.data)}
+      initialUndone={blueprint.undone}
     />
   )
 }

@@ -11,6 +11,8 @@ export type BlueprintRecord = {
   data: Blueprint
   /** Stored chat messages, not yet validated. See `loadChat` in `src/agents/blueprint-history.ts`. */
   messages: unknown[]
+  /** Ids of the agent's tool calls the person undid. */
+  undone: string[]
   updatedAt: Date
 }
 
@@ -20,6 +22,7 @@ function toRecord(row: typeof blueprints.$inferSelect): BlueprintRecord {
     name: row.name,
     data: normalizeBlueprint(row.data),
     messages: Array.isArray(row.messages) ? row.messages : [],
+    undone: Array.isArray(row.undone) ? row.undone.filter((item) => typeof item === "string") : [],
     updatedAt: row.updatedAt,
   }
 }

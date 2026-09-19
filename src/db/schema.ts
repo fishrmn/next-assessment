@@ -17,6 +17,11 @@ export const blueprints = sqliteTable("blueprints", {
    * already contains every change these messages describe.
    */
   messages: text("messages", { mode: "json" }).notNull().default(sql`'[]'`),
+  /**
+   * Ids of the agent's tool calls the person undid. The Blueprint in `data` already reflects
+   * the undo; this only lets the restored conversation show those changes as "Undone".
+   */
+  undone: text("undone", { mode: "json" }).notNull().default(sql`'[]'`),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

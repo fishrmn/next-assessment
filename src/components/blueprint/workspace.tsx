@@ -42,10 +42,12 @@ export function Workspace({
   id,
   initial,
   initialMessages,
+  initialUndone,
 }: {
   id: number
   initial: Blueprint
   initialMessages?: BlueprintMessage[]
+  initialUndone?: string[]
 }) {
   const [blueprint, setBlueprint] = useState(initial)
   const [status, setStatus] = useState<SaveStatus>("saved")
@@ -83,6 +85,7 @@ export function Workspace({
       blueprint={blueprint}
       onBlueprintChange={updateFromAgent}
       initialMessages={initialMessages}
+      initialUndone={initialUndone}
     >
       <Screen id={id} blueprint={blueprint} status={status} onChange={update} />
     </BlueprintChatProvider>

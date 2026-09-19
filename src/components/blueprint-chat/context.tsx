@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 
+import { saveUndone } from "@/actions/blueprints"
 import type { BlueprintMessage, UpdateBlueprintOutput } from "@/agents/blueprint"
 import type { Scope } from "@/lib/blueprint/document-sections"
 import type { Blueprint } from "@/lib/blueprint/model"
@@ -78,12 +79,15 @@ export function BlueprintChatProvider({
   blueprint,
   onBlueprintChange,
   initialMessages = [],
+  initialUndone = [],
   children,
 }: {
   id: number
   blueprint: Blueprint
   onBlueprintChange: (next: Blueprint) => void
   initialMessages?: BlueprintMessage[]
+  /** Tool calls undone in earlier visits, so the restored conversation still says "Undone". */
+  initialUndone?: string[]
   children: React.ReactNode
 }) {
   const latest = useRef(blueprint)
@@ -100,7 +104,7 @@ export function BlueprintChatProvider({
 
   const applied = useRef(new Set(finishedUpdates(initialMessages).map((update) => update.toolCallId)))
   const [session, setSession] = useState<ReadonlySet<string>>(new Set())
-  const [undone, setUndone] = useState<ReadonlySet<string>>(new Set())
+  const [undone, setUndone] = useState<ReadonlySet<string>>(() => new Set(initialUndone))
   const [about, setAbout] = useState<About | null>(null)
 
   useEffect(() => {
@@ -145,10 +149,13 @@ export function BlueprintChatProvider({
         const next = revertChanges(latest.current, output.applied)
         latest.current = next
         onBlueprintChange(next)
-        setUndone((previous) => new Set([...previous, toolCallId]))
+        const all = new Set([...undone, toolCallId])
+        setUndone(all)
+        // Not awaited: the undo is already on screen; this only keeps the label across reloads.
+        void saveUndone(id, [...all])
       },
     }),
-    [messages, status, error, sendMessage, stop, regenerate, request, session, undone, about, onBlueprintChange]
+    [id, messages, status, error, sendMessage, stop, regenerate, request, session, undone, about, onBlueprintChange]
   )
 
   return <BlueprintChatContext.Provider value={value}>{children}</BlueprintChatContext.Provider>
