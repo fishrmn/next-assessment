@@ -88,6 +88,14 @@ export const patchSchema = z.object({
     .object(Object.fromEntries(SECTION_IDS.map((id) => [id, slot])) as Record<(typeof SECTION_IDS)[number], typeof slot>)
     .optional()
     .describe("Rewording of the document's own titles and descriptions, per section."),
+  suggestions: z
+    .array(z.string().max(80))
+    .max(3)
+    .nullable()
+    .optional()
+    .describe(
+      "Two or three short things this person might want to say next, written as they would say them and specific to this brand (\"It feels too eco-friendly\", \"I want trust to stand out\"). Never generic."
+    ),
   skip: z
     .array(z.enum(SKIPPABLE_FACTS))
     .nullable()
@@ -123,6 +131,8 @@ function withoutNulls(value: unknown): unknown {
 export function patchFromToolInput(input: PatchInput, skippedSoFar: readonly string[] = []): Record<string, unknown> {
   const { clear, skip, ...fields } = input
   const patch = withoutNulls(fields) as Record<string, unknown>
+  // `suggestions` is for the chat, not for the Blueprint: the tool hands it back untouched.
+  delete patch.suggestions
   // `skip` adds to the list; the gate drops a path again once its fact has a value.
   if (skip && skip.length > 0) patch.skipped = [...new Set([...skippedSoFar, ...skip])]
   for (const path of clear ?? []) {

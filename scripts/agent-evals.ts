@@ -39,7 +39,7 @@ const acme = normalizeBlueprint({
   },
 })
 
-type Outcome = { before: Blueprint; after: Blueprint; reply: string; calls: number }
+type Outcome = { before: Blueprint; after: Blueprint; reply: string; calls: number; suggestions: string[] }
 type Case = {
   name: string
   from: Blueprint
@@ -102,8 +102,12 @@ const cases: Case[] = [
     from: emptyBlueprint(),
     say: "We're Tidewater, a small coffee roaster selling beans online to home baristas. We're laid back and a bit nerdy about coffee, never snobby.",
     touches: ["business", "expression", "direction", "copy"],
-    check: ({ after, reply }) => {
+    check: ({ after, reply, suggestions }) => {
       const { business, expression } = after
+      // Next steps that fit this brand, not the three stock phrases.
+      if (suggestions.length < 2) return `offered ${suggestions.length} suggestion(s), expected 2 or 3`
+      if (suggestions.some((item) => /more playful|something warmer|minimal than bold/i.test(item)))
+        return `offered a generic suggestion: ${suggestions.join(" | ")}`
       if (!/tidewater/i.test(business.name)) return `name is "${business.name}"`
       if (!business.offer || !business.audience) return "offer or audience left empty"
       if (business.comparables.length > 0) return `invented competitors: ${business.comparables.join(", ")}`
@@ -177,15 +181,18 @@ async function run(item: Case): Promise<{ outcome: Outcome; tokens: number; seco
 
   let after = item.from
   let calls = 0
+  let suggestions: string[] = []
   for (const step of result.steps) {
     for (const toolResult of step.toolResults) {
       calls += 1
-      after = replayChanges(after, (toolResult.output as UpdateBlueprintOutput).applied)
+      const output = toolResult.output as UpdateBlueprintOutput
+      after = replayChanges(after, output.applied)
+      suggestions = output.suggestions ?? []
     }
   }
 
   return {
-    outcome: { before: item.from, after, reply: result.text, calls },
+    outcome: { before: item.from, after, reply: result.text, calls, suggestions },
     tokens: result.usage.totalTokens ?? 0,
     seconds: (Date.now() - started) / 1000,
   }

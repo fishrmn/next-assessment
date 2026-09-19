@@ -31,9 +31,28 @@ const greetings: Record<Stage, { text: string; suggestions: string[] }> = {
   },
 }
 
+function Suggestions({ items }: { items: string[] }) {
+  const { send, busy } = useBlueprintChat()
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <Button
+          key={item}
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => send(item)}
+          className="h-auto max-w-full justify-start py-1.5 text-left whitespace-normal"
+        >
+          {item}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
 /** Shown before the first message. Static text: opening the chat costs no model call. */
 function Greeting({ stage }: { stage: Stage }) {
-  const { send, busy } = useBlueprintChat()
   const { text, suggestions } = greetings[stage]
 
   return (
@@ -42,20 +61,7 @@ function Greeting({ stage }: { stage: Stage }) {
         <Bubble variant="ghost">
           <BubbleContent>{text}</BubbleContent>
         </Bubble>
-        <div className="flex flex-wrap gap-2">
-          {suggestions.map((suggestion) => (
-            <Button
-              key={suggestion}
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => send(suggestion)}
-              className="h-auto max-w-full justify-start py-1.5 text-left whitespace-normal"
-            >
-              {suggestion}
-            </Button>
-          ))}
-        </div>
+        <Suggestions items={suggestions} />
       </MessageContent>
     </Message>
   )
@@ -69,13 +75,24 @@ export function BlueprintChatMessages({ stage }: { stage: Stage | null }) {
   const { messages, busy, error, retry, canUndo, undone, undo } = useBlueprintChat()
   const last = messages[messages.length - 1]
   const waiting = busy && (last?.role !== "assistant" || last.parts.length === 0)
+  // What to say next, as the agent proposed it in its latest update. Only under the last reply.
+  const suggestions =
+    busy || last?.role !== "assistant"
+      ? []
+      : last.parts.flatMap((part) =>
+          part.type === "tool-updateBlueprint" && part.state === "output-available"
+            ? (part.output.suggestions ?? [])
+            : []
+        )
 
   return (
     <MessageScrollerProvider autoScroll>
       <MessageScroller>
         <MessageScrollerViewport aria-label="Conversation">
           <MessageScrollerContent className="gap-4 p-4">
-            {stage && (
+            {/* The fixed greeting and its generic suggestions are only for a Blueprint nobody has
+                talked about yet. After that, suggestions come from the conversation. */}
+            {stage && messages.length === 0 && (
               <MessageScrollerItem>
                 <Greeting stage={stage} />
               </MessageScrollerItem>
@@ -139,6 +156,12 @@ export function BlueprintChatMessages({ stage }: { stage: Stage | null }) {
                 </Message>
               </MessageScrollerItem>
             ))}
+
+            {suggestions.length > 0 && (
+              <MessageScrollerItem>
+                <Suggestions items={suggestions} />
+              </MessageScrollerItem>
+            )}
 
             {waiting && (
               <MessageScrollerItem>

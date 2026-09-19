@@ -19,7 +19,12 @@ import { patchFromToolInput, patchSchema } from "@/lib/blueprint/patch-schema"
 /** Any AI Gateway model id that supports tool calls. */
 export const DEFAULT_MODEL = "openai/gpt-5.6-luna"
 
-export type UpdateBlueprintOutput = { applied: Change[]; rejected: Rejection[] }
+export type UpdateBlueprintOutput = {
+  applied: Change[]
+  rejected: Rejection[]
+  /** Next messages the agent thinks this person may want to send. Shown as buttons under its reply. */
+  suggestions?: string[]
+}
 
 /** The Blueprint as it stands inside one turn. Every patch goes through `applyPatch`, the validated write path. */
 export function createWorkingCopy(initial: Blueprint, only?: string[]) {
@@ -52,6 +57,7 @@ export function buildInstructions(blueprint: Blueprint, { about }: TurnOptions =
 HOW TO WORK
 - When the person tells you anything that belongs in the Blueprint, call updateBlueprint in that same turn. Do not ask for permission first. Put every field you can fill into one call.
 - Touch only what the request is about. Every field you are not changing is null. Never resend values that are already in the Blueprint.
+- With every call, fill "suggestions" with two or three things this person might say next, in their words and about this brand. They become one-click buttons.
 - Emptying a field is rare and explicit: list its path in "clear", and only when the person asks to remove something.
 - BUSINESS FACTS come only from the person. Never invent or guess a name, audience, goal, competitor or differentiator. If a fact is missing, ask for it.
 - BRAND EXPRESSION may be inferred. From how the person describes and expresses themselves, choose tone, personality, visual style, colors and typography. A wrong guess is cheap: they see it and correct you.
@@ -111,8 +117,10 @@ export function createBlueprintAgent(blueprint: Blueprint, turn: TurnOptions = {
         description:
           "Change the Brand Blueprint. Give a value only for the fields to change and null for every other field: null leaves a field exactly as it is. To empty a field, name it in `clear`. For a fact the person has no answer for, name it in `skip`. Returns `applied` (what really changed) and `rejected` (values that broke a rule, with the rule).",
         inputSchema: patchSchema,
-        execute: async (input): Promise<UpdateBlueprintOutput> =>
-          working.update(patchFromToolInput(input, working.current.skipped)),
+        execute: async (input): Promise<UpdateBlueprintOutput> => ({
+          ...working.update(patchFromToolInput(input, working.current.skipped)),
+          suggestions: (input.suggestions ?? []).map((item) => item.trim()).filter(Boolean),
+        }),
       }),
     },
     // One turn is: patch, maybe one correction, then the reply.

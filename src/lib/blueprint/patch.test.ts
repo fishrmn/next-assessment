@@ -223,6 +223,14 @@ describe("patchFromToolInput", () => {
     expect(applied).toHaveLength(2)
   })
 
+  it("keeps the chat's suggestions out of the Blueprint", () => {
+    const patch = patchFromToolInput({
+      expression: { tone: { humor: 4 } },
+      suggestions: ["It feels too eco-friendly", "I want trust to stand out"],
+    })
+    expect(patch).toEqual({ expression: { tone: { humor: 4 } } })
+  })
+
   it("adds `skip` to the facts already left open", () => {
     const patch = patchFromToolInput({ skip: ["business.comparables"] }, ["business.goal"])
     expect(patch).toEqual({ skipped: ["business.goal", "business.comparables"] })
