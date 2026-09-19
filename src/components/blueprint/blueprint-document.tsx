@@ -1,4 +1,5 @@
 import { slotText } from "@/lib/blueprint/document-sections"
+import { isSkipped } from "@/lib/blueprint/fields"
 import type { Blueprint, ScaleValue, SectionId } from "@/lib/blueprint/model"
 import {
   SCALES,
@@ -136,10 +137,10 @@ export function BlueprintDocument({
         )}
 
         <Block id="apart" source="From you" {...block}>
-          <Answer value={text("apart", "body")} />
+          <Answer value={text("apart", "body")} open={isSkipped(blueprint, "business.differentiator")} />
         </Block>
         <Block id="headed" source="From you" {...block}>
-          <Answer value={text("headed", "body")} />
+          <Answer value={text("headed", "body")} open={isSkipped(blueprint, "business.goal")} />
         </Block>
         <Block id="against" source="From you" {...block}>
           {business.comparables.length > 0 ? (
@@ -154,7 +155,7 @@ export function BlueprintDocument({
               ))}
             </ul>
           ) : (
-            <Pending />
+            <Pending open={isSkipped(blueprint, "business.comparables")} />
           )}
         </Block>
         <Block id="personality" source="Proposed" {...block}>
@@ -361,17 +362,22 @@ function Block({
   )
 }
 
-function Answer({ value }: { value: string }) {
+function Answer({ value, open = false }: { value: string; open?: boolean }) {
   return value ? (
     <p className="max-w-full text-lg leading-snug text-pretty wrap-anywhere">{value}</p>
   ) : (
-    <Pending />
+    <Pending open={open} />
   )
 }
 
-/** Placeholder for a part the conversation has not reached yet. */
-function Pending() {
-  return (
+/**
+ * Placeholder for an empty part. "Not captured yet" means the conversation has not reached it;
+ * "None for now" means the person said there is nothing to put here, which is an answer.
+ */
+function Pending({ open = false }: { open?: boolean }) {
+  return open ? (
+    <p className="text-sm opacity-60">None for now</p>
+  ) : (
     <p className="rounded-lg border border-dashed border-current/20 px-3 py-2 text-sm opacity-50">
       Not captured yet
     </p>

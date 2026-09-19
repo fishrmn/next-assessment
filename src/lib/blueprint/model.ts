@@ -56,6 +56,17 @@ export const FONT_PAIRINGS = [
 ] as const
 export type FontPairing = (typeof FONT_PAIRINGS)[number]
 
+/** The business facts a person may leave open. The brand's name is not one of them. */
+export const SKIPPABLE_FACTS = [
+  "business.industry",
+  "business.offer",
+  "business.audience",
+  "business.goal",
+  "business.comparables",
+  "business.differentiator",
+] as const
+export type SkippableFact = (typeof SKIPPABLE_FACTS)[number]
+
 /** The sections of the Blueprint document. Each one can carry edited text (see `Blueprint.copy`). */
 export const SECTION_IDS = [
   "hero",
@@ -91,6 +102,12 @@ export type Blueprint = {
   direction: { headline: string; rationale: string }
   /** True once the person said the Blueprint represents them. Any later change sets it back to false. */
   review: { confirmed: boolean }
+  /**
+   * Business facts the person left open on purpose ("we have no competitors in mind", "I don't
+   * know yet"), as field paths. They stop counting as missing, so the agent does not ask again
+   * and the page does not nag. A path leaves this list by itself once its field gets a value.
+   */
+  skipped: SkippableFact[]
   business: {
     name: string
     industry: Industry | ""
@@ -132,6 +149,7 @@ export function emptyBlueprint(name = ""): Blueprint {
     version: 1,
     direction: { headline: "", rationale: "" },
     review: { confirmed: false },
+    skipped: [],
     business: {
       name,
       industry: "",
@@ -227,22 +245,31 @@ export function normalizeBlueprint(input: unknown): Blueprint {
     ? business.comparables
     : []
 
+  const facts = {
+    name: text(business.name, 80),
+    industry: oneOf(INDUSTRIES, business.industry) ?? ("" as const),
+    offer: text(business.offer),
+    audience: text(business.audience),
+    goal: text(business.goal),
+    comparables: comparables
+      .map((item) => text(item, 60).trim())
+      .filter(Boolean)
+      .slice(0, 5),
+    differentiator: text(business.differentiator),
+  }
+  const isEmpty = (path: SkippableFact) => {
+    const value = facts[path.slice("business.".length) as keyof typeof facts]
+    return Array.isArray(value) ? value.length === 0 : value === ""
+  }
+  const skipped = Array.isArray(root.skipped) ? root.skipped : []
+
   return {
     version: 1,
     direction: { headline: text(direction.headline, 120), rationale: text(direction.rationale, 400) },
     review: { confirmed: record(root.review).confirmed === true },
-    business: {
-      name: text(business.name, 80),
-      industry: oneOf(INDUSTRIES, business.industry) ?? "",
-      offer: text(business.offer),
-      audience: text(business.audience),
-      goal: text(business.goal),
-      comparables: comparables
-        .map((item) => text(item, 60).trim())
-        .filter(Boolean)
-        .slice(0, 5),
-      differentiator: text(business.differentiator),
-    },
+    // Known facts only, each once, and only while the fact is still empty.
+    skipped: SKIPPABLE_FACTS.filter((path) => skipped.includes(path) && isEmpty(path)),
+    business: facts,
     expression: {
       personality: [
         ...new Set(

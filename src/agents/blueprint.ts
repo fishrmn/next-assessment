@@ -11,7 +11,7 @@ import { ToolLoopAgent, isStepCount, tool, type InferAgentUIMessage } from "ai"
 
 import { SECTION_SCOPE, scopeLabel, type Scope } from "@/lib/blueprint/document-sections"
 import { fieldGuide } from "@/lib/blueprint/field-guide"
-import { missingFields } from "@/lib/blueprint/fields"
+import { FIELDS, isSkipped, missingFields } from "@/lib/blueprint/fields"
 import type { Blueprint } from "@/lib/blueprint/model"
 import { applyPatch, type Change, type Rejection } from "@/lib/blueprint/patch"
 import { patchFromToolInput, patchSchema } from "@/lib/blueprint/patch-schema"
@@ -44,6 +44,7 @@ export type TurnOptions = {
 export function buildInstructions(blueprint: Blueprint, { about }: TurnOptions = {}): string {
   const missing = missingFields(blueprint)
   const facts = missing.filter((field) => field.kind === "fact").map((field) => field.label)
+  const leftOpen = FIELDS.filter((field) => isSkipped(blueprint, field.path)).map((field) => field.label)
   const expression = missing.filter((field) => field.kind === "expression").map((field) => field.label)
 
   return `You help a person capture their brand in a Brand Blueprint: a one-page summary that an agency's team reads to understand who the client is and how to represent them. The person sees the Blueprint next to this chat, and it updates live when you call updateBlueprint.
@@ -58,7 +59,7 @@ HOW TO WORK
 - A comparison of the two poles is not relative. "We're more minimal than bold" or "casual, not formal" says which side the brand is on: put the scale on that side (2 or 4, or 1 or 5 when they are emphatic), whatever its current value.
 - A request about color ("warmer", "a darker green") means new hex colors. Keep the background very light or very dark so text stays readable.
 - A strong reading is a proposal, not a fact. "We don't want to look luxurious" means approachable; it does not mean the brand stands against anyone. Do not escalate what the person said.
-- "I don't know", "none" or "not yet" is an answer. Leave that field empty, do not ask about it again in this conversation, and move on.
+- "I don't know", "none" or "not yet" is an answer. Name that fact in "skip": it stops counting as missing, and you stop asking about it.
 - After the tool returns, read "rejected". Fix what you can with another call; otherwise tell the person plainly what could not be set.
 - Never say a change was made unless updateBlueprint returned it under "applied".
 
@@ -93,7 +94,8 @@ The person pointed at "${scopeLabel(about)}" before writing. Only these fields c
       : ""
   }STILL MISSING
 Business facts: ${facts.length > 0 ? facts.join(", ") : "none"}
-Brand expression: ${expression.length > 0 ? expression.join(", ") : "none"}`
+Brand expression: ${expression.length > 0 ? expression.join(", ") : "none"}
+Left open by the person, do not ask: ${leftOpen.length > 0 ? leftOpen.join(", ") : "none"}`
 }
 
 export function createBlueprintAgent(blueprint: Blueprint, turn: TurnOptions = {}) {
@@ -106,9 +108,10 @@ export function createBlueprintAgent(blueprint: Blueprint, turn: TurnOptions = {
     tools: {
       updateBlueprint: tool({
         description:
-          "Change the Brand Blueprint. Give a value only for the fields to change and null for every other field: null leaves a field exactly as it is. To empty a field, name it in `clear`. Returns `applied` (what really changed) and `rejected` (values that broke a rule, with the rule).",
+          "Change the Brand Blueprint. Give a value only for the fields to change and null for every other field: null leaves a field exactly as it is. To empty a field, name it in `clear`. For a fact the person has no answer for, name it in `skip`. Returns `applied` (what really changed) and `rejected` (values that broke a rule, with the rule).",
         inputSchema: patchSchema,
-        execute: async (input): Promise<UpdateBlueprintOutput> => working.update(patchFromToolInput(input)),
+        execute: async (input): Promise<UpdateBlueprintOutput> =>
+          working.update(patchFromToolInput(input, working.current.skipped)),
       }),
     },
     // One turn is: patch, maybe one correction, then the reply.

@@ -57,7 +57,7 @@ type Case = {
  * model quietly repaired it with a second call. The old checks still passed.
  */
 function collateralDamage(item: Case, { before, after }: Outcome): string | null {
-  const paths = [...FIELDS.map((field) => field.path), ...SECTION_IDS.map((id) => `copy.${id}`)]
+  const paths = [...FIELDS.map((field) => field.path), ...SECTION_IDS.map((id) => `copy.${id}`), "skipped"]
   const changed = paths.filter(
     (path) => JSON.stringify(getPath(before, path)) !== JSON.stringify(getPath(after, path))
   )
@@ -148,6 +148,18 @@ const cases: Case[] = [
       JSON.stringify(before.expression.color.palette) !== JSON.stringify(after.expression.color.palette)
         ? null
         : "the palette did not change",
+  },
+  {
+    name: "“We have none”: leaves the fact open and stops asking",
+    from: normalizeBlueprint({ ...acme, business: { ...acme.business, comparables: [] } }),
+    say: "We honestly don't have any competitors or reference brands in mind. Leave that out.",
+    touches: ["skipped"],
+    check: ({ after, reply }) => {
+      if (!after.skipped.includes("business.comparables")) return "did not record that competitors were left open"
+      if (after.business.comparables.length > 0) return `invented competitors: ${after.business.comparables.join(", ")}`
+      const asksAgain = reply.split(/(?<=[.?!])\s+/).some((sentence) => sentence.includes("?") && /competitor|comparable|reference/i.test(sentence))
+      return asksAgain ? "asked about competitors again" : null
+    },
   },
   {
     name: "Remove on request: clears that field and nothing else",

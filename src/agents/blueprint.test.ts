@@ -60,6 +60,12 @@ describe("buildInstructions", () => {
     expect(instructions).not.toMatch(/Brand expression: .*Humor/)
   })
 
+  it("lists what the person left open, apart from what is missing", () => {
+    const instructions = buildInstructions(normalizeBlueprint({ skipped: ["business.comparables"] }))
+    expect(instructions).toMatch(/Left open by the person, do not ask: Competitors or comparable brands/)
+    expect(instructions).not.toMatch(/Business facts: .*Competitors/)
+  })
+
   it("says nothing is missing for a complete Blueprint", () => {
     const blueprint = normalizeBlueprint({
       direction: { headline: "Payroll without the drama", rationale: "They said: no sales call." },

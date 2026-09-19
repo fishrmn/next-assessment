@@ -142,10 +142,10 @@ export type Scope = SectionId | "direction"
  */
 export const SECTION_SCOPE: Record<Scope, string[]> = {
   direction: ["direction"],
-  hero: ["business.name", "business.industry", "business.offer", "business.audience", "copy.hero"],
-  apart: ["business.differentiator", "copy.apart"],
-  headed: ["business.goal", "copy.headed"],
-  against: ["business.comparables", "copy.against"],
+  hero: ["business.name", "business.industry", "business.offer", "business.audience", "copy.hero", "skipped"],
+  apart: ["business.differentiator", "copy.apart", "skipped"],
+  headed: ["business.goal", "copy.headed", "skipped"],
+  against: ["business.comparables", "copy.against", "skipped"],
   personality: ["expression.personality", "copy.personality"],
   voice: ["expression.tone", "copy.voice"],
   look: ["expression.visual", "copy.look"],

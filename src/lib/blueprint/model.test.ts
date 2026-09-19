@@ -51,6 +51,17 @@ describe("normalizeBlueprint copy layer", () => {
   })
 })
 
+describe("facts left open on purpose", () => {
+  it("keeps known, still-empty facts and drops the rest", () => {
+    const result = normalizeBlueprint({
+      business: { goal: "grow in Europe" },
+      skipped: ["business.comparables", "business.goal", "business.name", "expression.tone.humor", "business.comparables"],
+    })
+    // goal has a value, the name cannot be skipped, humor is not a fact, and duplicates collapse.
+    expect(result.skipped).toEqual(["business.comparables"])
+  })
+})
+
 describe("direction and review", () => {
   it("keeps the agent's direction and the person's confirmation", () => {
     const result = normalizeBlueprint({

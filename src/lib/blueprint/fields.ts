@@ -60,8 +60,17 @@ export function isFilled(blueprint: Blueprint, path: string): boolean {
   return value !== null && value !== undefined && value !== ""
 }
 
+/**
+ * What is still missing. The one place that decides it: the agent's instructions, the page's
+ * "Still open" line and the completion all read this, so they cannot disagree. A fact the
+ * person left open on purpose (`blueprint.skipped`) is not missing.
+ */
 export function missingFields(blueprint: Blueprint): Field[] {
-  return FIELDS.filter((field) => !isFilled(blueprint, field.path))
+  return FIELDS.filter((field) => !isFilled(blueprint, field.path) && !isSkipped(blueprint, field.path))
+}
+
+export function isSkipped(blueprint: Blueprint, path: string): boolean {
+  return (blueprint.skipped as string[]).includes(path)
 }
 
 /** Share of fields filled, 0 to 100. */

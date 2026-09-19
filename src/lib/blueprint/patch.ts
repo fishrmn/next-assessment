@@ -33,6 +33,7 @@ import {
 type CopyPatch = { title?: string | null; body?: string | null }
 
 export type BlueprintPatch = {
+  skipped?: string[]
   direction?: Partial<Record<keyof Blueprint["direction"], string | null>>
   business?: Partial<{
     [Key in keyof Blueprint["business"]]: Blueprint["business"][Key] | null
@@ -103,6 +104,7 @@ function setPath(target: Record<string, unknown>, path: string, value: unknown) 
 }
 
 function labelOf(path: string): string {
+  if (path === "skipped") return "Left open for now"
   const field = FIELDS.find((item) => item.path === path)
   if (field) return field.label
   const [, section, slot] = path.split(".")
@@ -115,6 +117,9 @@ function labelOf(path: string): string {
 
 /** A stored value in words, for the chat's list of changes. */
 function display(path: string, value: unknown): string {
+  if (path === "skipped" && Array.isArray(value)) {
+    return value.map((item) => labelOf(String(item)).toLowerCase()).join(", ") || "—"
+  }
   if (value === null || value === undefined || value === "") return "—"
   if (Array.isArray(value)) return value.length > 0 ? value.join(", ") : "—"
   const scale = SCALES.find((field) => path.endsWith(`.${field.id}`))
@@ -136,6 +141,7 @@ function ruleFor(path: string): string {
   if (path === "business.comparables") return "a list of at most 5 short names"
   if (path.startsWith("copy.")) return "unknown section or text too long (title 80, body 400 characters)"
   if (path.startsWith("business.")) return "must be text of at most 200 characters (brand name: 80)"
+  if (path === "skipped") return "only business facts that are still empty can be left open"
   if (path.startsWith("direction.")) return "must be text (headline at most 120 characters, rationale 400)"
   return "not a field of the Blueprint"
 }

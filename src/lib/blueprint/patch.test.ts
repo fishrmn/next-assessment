@@ -223,6 +223,21 @@ describe("patchFromToolInput", () => {
     expect(applied).toHaveLength(2)
   })
 
+  it("adds `skip` to the facts already left open", () => {
+    const patch = patchFromToolInput({ skip: ["business.comparables"] }, ["business.goal"])
+    expect(patch).toEqual({ skipped: ["business.goal", "business.comparables"] })
+
+    const { blueprint, applied } = applyPatch(acme, patch)
+    expect(blueprint.skipped).toEqual(["business.goal", "business.comparables"])
+    expect(applied[0]).toMatchObject({ label: "Left open for now", to: "current goal, competitors or comparable brands" })
+  })
+
+  it("refuses to leave open a fact that already has a value", () => {
+    const { blueprint, rejected } = applyPatch(acme, patchFromToolInput({ skip: ["business.offer"] }))
+    expect(blueprint.skipped).toEqual([])
+    expect(rejected[0].path).toBe("skipped")
+  })
+
   it("refuses to clear a path that is not a field", () => {
     expect(patchSchema.safeParse({ clear: ["business.revenue"] }).success).toBe(false)
   })

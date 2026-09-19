@@ -16,7 +16,7 @@ import { z } from "zod"
 
 import { DOCUMENT_SECTIONS } from "./document-sections"
 import { FIELDS } from "./fields"
-import { FONT_PAIRINGS, INDUSTRIES, MAX_TRAITS, SECTION_IDS, TRAITS } from "./model"
+import { FONT_PAIRINGS, INDUSTRIES, MAX_TRAITS, SECTION_IDS, SKIPPABLE_FACTS, TRAITS } from "./model"
 
 /** Every path `clear` accepts: the Blueprint's fields, and each reworded text of the document. */
 export const CLEARABLE_PATHS = [
@@ -88,6 +88,13 @@ export const patchSchema = z.object({
     .object(Object.fromEntries(SECTION_IDS.map((id) => [id, slot])) as Record<(typeof SECTION_IDS)[number], typeof slot>)
     .optional()
     .describe("Rewording of the document's own titles and descriptions, per section."),
+  skip: z
+    .array(z.enum(SKIPPABLE_FACTS))
+    .nullable()
+    .optional()
+    .describe(
+      'Business facts the person has no answer for ("none", "I don\'t know", "not yet"), as paths such as "business.comparables". They stop counting as missing.'
+    ),
   clear: z
     .array(z.enum(CLEARABLE_PATHS))
     .nullable()
@@ -110,12 +117,14 @@ function withoutNulls(value: unknown): unknown {
 
 /**
  * Turns the tool's input into a patch for `applyPatch`, where `null` does mean "clear":
- * every null the model sent is dropped (leave alone), and only the paths named in `clear`
- * become nulls.
+ * every null the model sent is dropped (leave alone), only the paths named in `clear`
+ * become nulls, and `skip` becomes the Blueprint's `skipped` list.
  */
-export function patchFromToolInput(input: PatchInput): Record<string, unknown> {
-  const { clear, ...fields } = input
+export function patchFromToolInput(input: PatchInput, skippedSoFar: readonly string[] = []): Record<string, unknown> {
+  const { clear, skip, ...fields } = input
   const patch = withoutNulls(fields) as Record<string, unknown>
+  // `skip` adds to the list; the gate drops a path again once its fact has a value.
+  if (skip && skip.length > 0) patch.skipped = [...new Set([...skippedSoFar, ...skip])]
   for (const path of clear ?? []) {
     const keys = path.split(".")
     let node = patch

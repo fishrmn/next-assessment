@@ -19,6 +19,13 @@ describe("missingFields", () => {
     expect(missingFields(emptyBlueprint())).toHaveLength(FIELDS.length)
   })
 
+  it("does not count a fact the person left open", () => {
+    const blueprint = normalizeBlueprint({ skipped: ["business.comparables"] })
+    const paths = missingFields(blueprint).map((field) => field.path)
+    expect(paths).not.toContain("business.comparables")
+    expect(paths).toContain("business.goal")
+  })
+
   it("drops a field once it holds a value", () => {
     const blueprint = normalizeBlueprint({
       business: { name: "Acme", comparables: ["Gusto"] },
