@@ -36,6 +36,12 @@ export const blueprints = sqliteTable("blueprints", {
   /** Brand name, duplicated from `data.business.name` so lists need no JSON parsing. */
   name: text("name").notNull(),
   data: text("data", { mode: "json" }).notNull(),
+  /**
+   * The conversation with the agent, in the AI SDK's UI message format. Written by the chat
+   * route when a turn ends. It is history for the person, not state: the Blueprint in `data`
+   * already contains every change these messages describe.
+   */
+  messages: text("messages", { mode: "json" }).notNull().default(sql`'[]'`),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

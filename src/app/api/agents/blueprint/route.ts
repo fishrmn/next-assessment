@@ -2,6 +2,7 @@ import { createAgentUIStreamResponse } from "ai"
 
 import { createBlueprintAgent } from "@/agents/blueprint"
 import { normalizeBlueprint } from "@/lib/blueprint/model"
+import { saveMessages } from "@/lib/blueprints"
 
 export const maxDuration = 60
 
@@ -20,12 +21,17 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null)
   if (!body || !Array.isArray(body.messages)) {
-    return Response.json({ error: "Expected { messages, blueprint }." }, { status: 400 })
+    return Response.json({ error: "Expected { id, messages, blueprint }." }, { status: 400 })
   }
 
   return createAgentUIStreamResponse({
     agent: createBlueprintAgent(normalizeBlueprint(body.blueprint)),
     uiMessages: body.messages,
+    // Keep the conversation, so a reload brings the chat back next to the document. This runs
+    // when the turn ends, also when the person pressed Stop. It stores the transcript only:
+    // the Blueprint is still saved by the browser alone.
+    originalMessages: body.messages,
+    onEnd: ({ messages }) => saveMessages(Number(body.id), messages),
     onError: (error) => (error instanceof Error ? error.message : "The model call failed."),
   })
 }
