@@ -41,6 +41,9 @@ export function getBlueprint(id: number): BlueprintRecord | null {
 
 /** Stores the conversation of one Blueprint. Touches only the `messages` column, never `data`. */
 export function saveMessages(id: number, messages: unknown[]): void {
-  if (!Number.isInteger(id)) return
-  db.update(blueprints).set({ messages }).where(eq(blueprints.id, id)).run()
+  const stored = Number.isInteger(id)
+    ? db.update(blueprints).set({ messages }).where(eq(blueprints.id, id)).run().changes
+    : 0
+  // Never fail silently: a transcript that is not stored is a chat that vanishes on reload.
+  if (stored === 0) console.warn(`Chat history was not stored: no blueprint with id ${String(id)}.`)
 }

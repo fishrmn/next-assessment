@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null)
   if (!body || !Array.isArray(body.messages)) {
-    return Response.json({ error: "Expected { id, messages, blueprint }." }, { status: 400 })
+    return Response.json({ error: "Expected { blueprintId, messages, blueprint }." }, { status: 400 })
   }
 
   return createAgentUIStreamResponse({
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     originalMessages: body.messages,
     generateMessageId: createIdGenerator({ prefix: "msg", size: 16 }),
     consumeSseStream: consumeStream,
-    onEnd: ({ messages }) => saveMessages(Number(body.id), messages),
+    onEnd: ({ messages }) => saveMessages(Number(body.blueprintId), messages),
     onError: (error) => (error instanceof Error ? error.message : "The model call failed."),
   })
 }

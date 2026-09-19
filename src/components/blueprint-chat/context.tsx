@@ -108,7 +108,8 @@ export function BlueprintChatProvider({
     setSession((previous) => new Set([...previous, ...fresh.map((update) => update.toolCallId)]))
   }, [messages, onBlueprintChange])
 
-  const request = useCallback(() => ({ body: { id, blueprint: latest.current } }), [id])
+  // Not `id`: useChat puts its own chat id in the body under that name, and it would win.
+  const request = useCallback(() => ({ body: { blueprintId: id, blueprint: latest.current } }), [id])
 
   const value = useMemo<BlueprintChat>(
     () => ({
