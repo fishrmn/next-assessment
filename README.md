@@ -13,13 +13,15 @@ an Undo. "Make the tone more playful" or "a darker green" work the same way.
 **Run it**
 
 ```bash
+nvm use                      # Node 22.22.0 exactly; npm install refuses any other version
 npm install
 cp .env.example .env.local   # then set AI_GATEWAY_API_KEY (Vercel AI Gateway)
 npm run db:reset
 npm run dev
 ```
 
-Without a key the app runs and the chat explains what is missing.
+Without a key the app runs and the chat explains what is missing. The decisions behind the
+design, what was rejected and what user testing changed are in [`DECISIONS.md`](DECISIONS.md).
 
 **How it works**
 
@@ -37,8 +39,8 @@ The browser is the only writer of a Blueprint (autosave). The agent returns chan
 **Check it**
 
 ```bash
-npm test              # 34 unit tests, no model calls
-npm run agent:evals   # 6 cases against the real model, a few cents
+npm test              # 54 unit tests, no model calls
+npm run agent:evals   # 10 cases against the real model, a few cents
 ```
 
 ## Project stack
