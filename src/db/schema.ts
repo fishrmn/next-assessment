@@ -2,22 +2,26 @@ import { sql } from "drizzle-orm"
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 /**
- * Example schema — a starting point, not a requirement.
- *
- * One table is provided to show the pattern: define tables here in
- * TypeScript, then run `npm run db:push` to sync them to `local.db`.
- * Extend or replace this schema however your design needs.
- *
- * The `config` column stores the page's element configuration as JSON —
- * the same serializable shape that components like `TextElement` render.
+ * One row per client. `data` holds the whole Blueprint document as JSON
+ * (shape: `Blueprint` in `src/lib/blueprint/model.ts`). Always read it through
+ * `normalizeBlueprint`, never trust the stored shape directly.
  */
-export const pages = sqliteTable("pages", {
+export const blueprints = sqliteTable("blueprints", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Brand name, duplicated from `data.business.name` so lists need no JSON parsing. */
   name: text("name").notNull(),
-  /** Which of the three templates this page is based on. */
-  template: text("template").notNull(),
-  /** Arbitrary JSON — type it more strictly as your element model takes shape. */
-  config: text("config", { mode: "json" }).notNull(),
+  data: text("data", { mode: "json" }).notNull(),
+  /**
+   * The conversation with the agent, in the AI SDK's UI message format. Written by the chat
+   * route when a turn ends. It is history for the person, not state: the Blueprint in `data`
+   * already contains every change these messages describe.
+   */
+  messages: text("messages", { mode: "json" }).notNull().default(sql`'[]'`),
+  /**
+   * Ids of the agent's tool calls the person undid. The Blueprint in `data` already reflects
+   * the undo; this only lets the restored conversation show those changes as "Undone".
+   */
+  undone: text("undone", { mode: "json" }).notNull().default(sql`'[]'`),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -25,6 +29,3 @@ export const pages = sqliteTable("pages", {
     .notNull()
     .default(sql`(unixepoch())`),
 })
-
-export type Page = typeof pages.$inferSelect
-export type NewPage = typeof pages.$inferInsert
