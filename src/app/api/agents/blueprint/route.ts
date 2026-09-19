@@ -1,4 +1,4 @@
-import { createAgentUIStreamResponse } from "ai"
+import { consumeStream, createAgentUIStreamResponse, createIdGenerator } from "ai"
 
 import { createBlueprintAgent } from "@/agents/blueprint"
 import { normalizeBlueprint } from "@/lib/blueprint/model"
@@ -27,10 +27,15 @@ export async function POST(request: Request) {
   return createAgentUIStreamResponse({
     agent: createBlueprintAgent(normalizeBlueprint(body.blueprint)),
     uiMessages: body.messages,
-    // Keep the conversation, so a reload brings the chat back next to the document. This runs
-    // when the turn ends, also when the person pressed Stop. It stores the transcript only:
-    // the Blueprint is still saved by the browser alone.
+    // Stop in the chat aborts the request. Passing the signal on stops the model too, so the
+    // server never produces changes the browser is no longer there to apply.
+    abortSignal: request.signal,
+    // Keep the conversation, so a reload brings the chat back next to the document. It stores
+    // the transcript only: the Blueprint is still saved by the browser alone. `consumeStream`
+    // makes `onEnd` run after an abort as well, with the messages as far as they got.
     originalMessages: body.messages,
+    generateMessageId: createIdGenerator({ prefix: "msg", size: 16 }),
+    consumeSseStream: consumeStream,
     onEnd: ({ messages }) => saveMessages(Number(body.id), messages),
     onError: (error) => (error instanceof Error ? error.message : "The model call failed."),
   })

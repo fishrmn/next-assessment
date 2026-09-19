@@ -114,7 +114,7 @@ async function run(item: Case): Promise<{ outcome: Outcome; tokens: number; seco
 
   return {
     outcome: { before: item.from, after, reply: result.text, calls },
-    tokens: result.totalUsage.totalTokens ?? 0,
+    tokens: result.usage.totalTokens ?? 0,
     seconds: (Date.now() - started) / 1000,
   }
 }
