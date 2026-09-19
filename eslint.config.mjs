@@ -5,10 +5,10 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // shadcn-generated code is vendored as-is (AGENTS.md: "don't hand-edit"). Two of its files
-  // set state inside an effect, which this rule rejects; the rule stays on for our own code.
+  // shadcn-generated code is vendored as-is (AGENTS.md: "don't hand-edit"). Its `use-mobile`
+  // hook sets state inside an effect, which this rule rejects; the rule stays on for our own code.
   {
-    files: ["src/components/ui/**", "src/hooks/use-mobile.ts"],
+    files: ["src/hooks/use-mobile.ts"],
     rules: { "react-hooks/set-state-in-effect": "off" },
   },
   // Override default ignores of eslint-config-next.
