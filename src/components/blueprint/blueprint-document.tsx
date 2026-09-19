@@ -1,3 +1,6 @@
+import { ChevronDownIcon } from "lucide-react"
+
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { slotText } from "@/lib/blueprint/document-sections"
 import { isSkipped } from "@/lib/blueprint/fields"
 import type { Blueprint, ScaleValue, SectionId } from "@/lib/blueprint/model"
@@ -38,9 +41,9 @@ export type ReviewControls = {
  * their palette and font pairing arrive as CSS variables on the root element. These are the only
  * raw color values in the app, and they are data, not styling decisions.
  *
- * Expression is shown as things a person can judge, with the settings behind them second:
- * a sentence in the brand's voice before the tone scales, the brand's name set in its type
- * before the font's name, the colors applied to a small sample before their hex codes.
+ * It leads with what a person can judge: the direction, a sentence in the brand's voice, and the
+ * brand's name set in its type and colors. The parameters behind them (scales, font name, hex
+ * codes, business facts) follow as details.
  *
  * It lays itself out by its container (`@container`), never by the window, because it lives
  * in a panel and in a full-width presentation.
@@ -48,10 +51,17 @@ export type ReviewControls = {
 export function BlueprintDocument({
   blueprint,
   review,
+  details = "open",
   className,
 }: {
   blueprint: Blueprint
   review?: ReviewControls
+  /**
+   * "folded" while a person reviews a proposal: the direction, a line in the brand's voice and a
+   * visual sample come first, and the parameters wait behind "See the full blueprint".
+   * "open" for the deliverable, which has to be complete.
+   */
+  details?: "open" | "folded"
   className?: string
 }) {
   const { business, expression, direction } = blueprint
@@ -116,13 +126,14 @@ export function BlueprintDocument({
         )}
       </Pickable>
 
-      <div className="grid gap-x-10 gap-y-9 p-6 @2xl:grid-cols-2 @2xl:p-10">
+      <div className="flex flex-col gap-9 p-6 @2xl:p-10">
+        {/* The proposal first: what a person can react to before reading any parameter. */}
         {(direction.headline || direction.rationale) && (
           <Pickable
             id="direction"
             label="The direction"
             review={review}
-            className="flex flex-col gap-2 @2xl:col-span-2"
+            className="flex flex-col gap-2"
           >
             <Heading source={review && !review.confirmed ? "Proposed" : undefined}>The direction</Heading>
             <p className="max-w-full font-(family-name:--bp-heading) text-2xl leading-tight font-semibold text-balance wrap-anywhere @2xl:text-3xl">
@@ -136,6 +147,56 @@ export function BlueprintDocument({
           </Pickable>
         )}
 
+
+        <div className="grid gap-6 @2xl:grid-cols-2">
+          <Pickable id="voice" label={text("voice", "title")} review={review} className="flex min-w-0 flex-col gap-3">
+            <Heading source={review && !review.confirmed ? "Proposed" : undefined}>Sounds like</Heading>
+            {sample ? (
+              <blockquote className="flex flex-1 items-center rounded-lg border-l-4 border-(--bp-accent) bg-current/5 p-5 font-(family-name:--bp-heading) text-xl leading-snug text-pretty wrap-anywhere @2xl:text-2xl">
+                “{sample}”
+              </blockquote>
+            ) : (
+              <Pending />
+            )}
+          </Pickable>
+          <Pickable id="color" label={text("color", "title")} review={review} className="flex min-w-0 flex-col gap-3">
+            <Heading source={review && !review.confirmed ? "Proposed" : undefined}>Looks like</Heading>
+            {expression.color.palette || font ? (
+              // The brand's type and colors doing their jobs: easier to judge than swatches and font names.
+              <div
+                aria-hidden
+                className="flex flex-1 flex-col items-start gap-3 rounded-lg p-5 shadow-[inset_0_0_0_1px_oklch(0_0_0/0.1)]"
+              >
+                <span className="rounded-full bg-(--bp-accent) px-2.5 py-0.5 text-xs font-medium text-(--bp-on-accent)">
+                  New
+                </span>
+                <span className="max-w-full font-(family-name:--bp-heading) text-3xl leading-none font-semibold text-(--bp-secondary) wrap-anywhere">
+                  {brand}
+                </span>
+                <span className="max-w-full text-sm leading-snug wrap-anywhere opacity-75">
+                  {direction.headline || lead || "A headline in this lettering"}
+                </span>
+                <span className="mt-auto rounded-md bg-(--bp-primary) px-3 py-1.5 text-sm font-medium text-(--bp-on-primary)">
+                  Get started
+                </span>
+              </div>
+            ) : (
+              <Pending />
+            )}
+          </Pickable>
+        </div>
+
+        {/* Everything behind the proposal. Folded while a person reviews; open in the deliverable. */}
+        <Collapsible defaultOpen={details === "open"} className="flex flex-col gap-9">
+          {details === "folded" && (
+            <CollapsibleTrigger className="group/full flex w-fit items-center gap-1.5 rounded-md text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-current/40">
+              <span className="group-data-panel-open/full:hidden">See the full blueprint</span>
+              <span className="hidden group-data-panel-open/full:inline">Hide the details</span>
+              <ChevronDownIcon className="size-4 transition-[rotate] duration-150 ease-out group-data-panel-open/full:rotate-180" />
+            </CollapsibleTrigger>
+          )}
+          <CollapsibleContent>
+            <div className="grid gap-x-10 gap-y-9 @2xl:grid-cols-2">
         <Block id="apart" source="From you" {...block}>
           <Answer value={text("apart", "body")} open={isSkipped(blueprint, "business.differentiator")} />
         </Block>
@@ -175,19 +236,8 @@ export function BlueprintDocument({
           )}
         </Block>
 
+
         <Block id="voice" source="Proposed" className="@2xl:col-span-2" {...block}>
-          {sample ? (
-            <figure className="flex flex-col gap-2 rounded-lg border-l-4 border-(--bp-accent) bg-current/5 p-5">
-              <figcaption className="text-xs font-medium tracking-widest uppercase opacity-60">
-                Sounds like
-              </figcaption>
-              <blockquote className="max-w-full font-(family-name:--bp-heading) text-xl leading-snug text-pretty wrap-anywhere @2xl:text-2xl">
-                “{sample}”
-              </blockquote>
-            </figure>
-          ) : (
-            <Pending />
-          )}
           <ul className="grid gap-x-10 gap-y-3 @2xl:grid-cols-2">
             {toneScales.map((field) => (
               <ScaleRow key={field.id} field={field} value={readScale(blueprint, field.id)} />
@@ -197,20 +247,12 @@ export function BlueprintDocument({
 
         <Block id="typography" source="Proposed" {...block}>
           {font ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5 rounded-lg bg-current/5 p-5">
-                <p className="max-w-full font-(family-name:--bp-heading) text-3xl leading-none font-semibold wrap-anywhere">
-                  {brand}
-                </p>
-                <p className="max-w-full font-(family-name:--bp-heading) text-lg leading-snug wrap-anywhere">
-                  {direction.headline || lead || "A headline in this lettering"}
-                </p>
-                <p className="max-w-full text-sm leading-relaxed wrap-anywhere opacity-75">
-                  {text("apart", "body") || "And this is how a paragraph of everyday text reads next to it."}
-                </p>
-              </div>
-              <p className="max-w-full text-sm wrap-anywhere opacity-70">
-                {font.name}. {text("typography", "body")}
+            <div className="flex flex-col gap-1.5">
+              <p className="max-w-full font-(family-name:--bp-heading) text-2xl leading-tight font-semibold wrap-anywhere">
+                {font.name}
+              </p>
+              <p className="max-w-full text-sm leading-relaxed wrap-anywhere opacity-75">
+                {text("typography", "body")}
               </p>
             </div>
           ) : (
@@ -225,48 +267,35 @@ export function BlueprintDocument({
           </ul>
         </Block>
 
+
         <Block id="color" source="Proposed" className="@2xl:col-span-2" {...block}>
           {expression.color.palette ? (
-            <div className="grid gap-5 @2xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-              {/* The colors doing their jobs, which is easier to judge than four squares. */}
-              <div
-                aria-hidden
-                className="flex flex-col gap-3 rounded-lg p-4 shadow-[inset_0_0_0_1px_oklch(0_0_0/0.1)]"
-              >
-                <span className="w-fit rounded-full bg-(--bp-accent) px-2.5 py-0.5 text-xs font-medium text-(--bp-on-accent)">
-                  New
-                </span>
-                <span className="max-w-full font-(family-name:--bp-heading) text-xl leading-tight font-semibold text-(--bp-secondary) wrap-anywhere">
-                  {brand}
-                </span>
-                <span className="w-fit rounded-md bg-(--bp-primary) px-3 py-1.5 text-sm font-medium text-(--bp-on-primary)">
-                  Get started
-                </span>
-              </div>
-              <div className="flex flex-col gap-3">
-                <ul className="grid grid-cols-4 gap-2">
-                  {(["primary", "secondary", "accent", "background"] as const).map((role) => (
-                    <li key={role} className="flex min-w-0 flex-col gap-1">
-                      <span
-                        className="h-10 rounded-md shadow-[inset_0_0_0_1px_oklch(0_0_0/0.1)] transition-[background-color] duration-300"
-                        style={{ backgroundColor: palette[role] }}
-                      />
-                      <span className="truncate text-xs font-medium capitalize">{role}</span>
-                      <span className="truncate font-mono text-[0.6875rem] uppercase opacity-60">
-                        {palette[role]}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {text("color", "body") && (
-                  <p className="max-w-full text-sm wrap-anywhere opacity-70">{text("color", "body")}</p>
-                )}
-              </div>
+            <div className="flex flex-col gap-3">
+              <ul className="grid grid-cols-2 gap-3 @2xl:grid-cols-4">
+                {(["primary", "secondary", "accent", "background"] as const).map((role) => (
+                  <li key={role} className="flex min-w-0 flex-col gap-1">
+                    <span
+                      className="h-12 rounded-md shadow-[inset_0_0_0_1px_oklch(0_0_0/0.1)] transition-[background-color] duration-300"
+                      style={{ backgroundColor: palette[role] }}
+                    />
+                    <span className="truncate text-xs font-medium capitalize">{role}</span>
+                    <span className="truncate font-mono text-[0.6875rem] uppercase opacity-60">
+                      {palette[role]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {text("color", "body") && (
+                <p className="max-w-full text-sm wrap-anywhere opacity-70">{text("color", "body")}</p>
+              )}
             </div>
           ) : (
             <Pending />
           )}
         </Block>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </article>
   )

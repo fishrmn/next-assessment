@@ -220,6 +220,7 @@ function Screen({
         />
         <BlueprintDocument
           blueprint={blueprint}
+          details="folded"
           review={{
             confirmed: blueprint.review.confirmed,
             picked: about?.id ?? null,
