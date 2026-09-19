@@ -21,8 +21,6 @@ export function AppShell({
   return (
     <TooltipProvider>
       <SidebarProvider style={{ "--header-height": "3.5rem" } as React.CSSProperties}>
-        {/* No Suspense around the sidebar: a boundary would hydrate it after SidebarProvider has
-            already detected a phone-width window, and its first render would not match the server's. */}
         <AppSidebar blueprints={blueprints} />
         <SidebarInset className="min-w-0">
           <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b px-4">

@@ -1,17 +1,10 @@
 "use client"
 
-import {
-  CircleCheckIcon,
-  CircleDashedIcon,
-  CircleIcon,
-  LayoutGridIcon,
-  PlusIcon,
-  SwatchBookIcon,
-} from "lucide-react"
+import { LayoutGridIcon, PlusIcon, SwatchBookIcon } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 
-import { NewBlueprintDialog } from "@/components/new-blueprint-dialog"
+import { createBlueprint } from "@/actions/blueprints"
 import {
   Sidebar,
   SidebarContent,
@@ -21,45 +14,22 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { isQuestionId, sectionOf, type SectionStatus } from "@/lib/blueprint/registry"
 
 /** What the sidebar needs per Blueprint. Computed on the server by the layout. */
-export type SidebarBlueprint = {
-  id: number
-  name: string
-  sections: { id: string; title: string; firstQuestion: string; status: SectionStatus }[]
-}
-
-const statusIcon = {
-  done: CircleCheckIcon,
-  partial: CircleDashedIcon,
-  empty: CircleIcon,
-} as const
-
-const statusLabel = { done: "complete", partial: "in progress", empty: "not started" } as const
+export type SidebarBlueprint = { id: number; name: string; percent: number }
 
 /**
  * The app's sidebar, following shadcn's documented anatomy: a header with the logo box and a
- * two-line text block, then one group listing every saved Blueprint. The open Blueprint expands
- * to its intake sections, each with its progress, so the session guides without trapping.
+ * two-line text block, then one group listing every saved Blueprint with how much of it is
+ * captured. "New blueprint" is a plain form: it creates the row and opens its chat.
  */
 export function AppSidebar({ blueprints }: { blueprints: SidebarBlueprint[] }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const question = searchParams.get("q")
-  // While the inspect tool is open the person is not on any intake section.
-  const activeSection = searchParams.has("inspect")
-    ? null
-    : isQuestionId(question)
-      ? sectionOf(question).id
-      : "basics"
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -97,23 +67,20 @@ export function AppSidebar({ blueprints }: { blueprints: SidebarBlueprint[] }) {
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Blueprints</SidebarGroupLabel>
-          <NewBlueprintDialog
-            trigger={
-              <SidebarGroupAction title="New blueprint">
-                <PlusIcon />
-                <span className="sr-only">New blueprint</span>
-              </SidebarGroupAction>
-            }
-          />
+          <form action={createBlueprint}>
+            <SidebarGroupAction type="submit" title="New blueprint">
+              <PlusIcon />
+              <span className="sr-only">New blueprint</span>
+            </SidebarGroupAction>
+          </form>
           <SidebarGroupContent>
             <SidebarMenu>
               {blueprints.map((blueprint) => {
                 const href = `/blueprints/${blueprint.id}`
-                const open = pathname === href
                 return (
                   <SidebarMenuItem key={blueprint.id}>
                     <SidebarMenuButton
-                      isActive={open}
+                      isActive={pathname === href}
                       tooltip={blueprint.name}
                       render={<Link href={href} />}
                     >
@@ -122,29 +89,7 @@ export function AppSidebar({ blueprints }: { blueprints: SidebarBlueprint[] }) {
                       </span>
                       <span>{blueprint.name}</span>
                     </SidebarMenuButton>
-                    {open && (
-                      <SidebarMenuSub>
-                        {blueprint.sections.map((section) => {
-                          const StatusIcon = statusIcon[section.status]
-                          return (
-                            <SidebarMenuSubItem key={section.id}>
-                              <SidebarMenuSubButton
-                                isActive={section.id === activeSection}
-                                render={<Link href={`${href}?q=${section.firstQuestion}`} />}
-                              >
-                                <StatusIcon
-                                  aria-label={statusLabel[section.status]}
-                                  className={
-                                    section.status === "empty" ? "opacity-40" : undefined
-                                  }
-                                />
-                                <span>{section.title}</span>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          )
-                        })}
-                      </SidebarMenuSub>
-                    )}
+                    <SidebarMenuBadge className="tabular-nums">{blueprint.percent}%</SidebarMenuBadge>
                   </SidebarMenuItem>
                 )
               })}

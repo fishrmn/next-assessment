@@ -1,7 +1,7 @@
 import { PlusIcon, SwatchBookIcon } from "lucide-react"
 import Link from "next/link"
 
-import { NewBlueprintDialog } from "@/components/new-blueprint-dialog"
+import { createBlueprint } from "@/actions/blueprints"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,22 +21,21 @@ const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium" })
 
 export default function BlueprintsPage() {
   const blueprints = listBlueprints()
+  // No dialog: the button creates the Blueprint and opens its chat, where the agent asks the rest.
   const newBlueprint = (
-    <NewBlueprintDialog
-      trigger={
-        <Button>
-          <PlusIcon />
-          New blueprint
-        </Button>
-      }
-    />
+    <form action={createBlueprint}>
+      <Button type="submit">
+        <PlusIcon />
+        New blueprint
+      </Button>
+    </form>
   )
 
   return (
     <>
       <PageHeader
         title="Blueprints"
-        description="One guided session per client. Pick one up where it was left."
+        description="One per client. Open one and tell the agent what to capture or change."
         actions={newBlueprint}
       />
       {blueprints.length === 0 ? (
@@ -47,7 +46,7 @@ export default function BlueprintsPage() {
             </EmptyMedia>
             <EmptyTitle>No blueprints yet</EmptyTitle>
             <EmptyDescription>
-              Start a guided session to capture a client&apos;s brand.
+              Create one and describe the brand to the agent. It fills in the rest.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>{newBlueprint}</EmptyContent>

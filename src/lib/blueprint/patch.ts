@@ -166,6 +166,13 @@ export function applyPatch(blueprint: Blueprint, patch: unknown): PatchResult {
   return { blueprint: next, applied, rejected }
 }
 
+/** Applies changes computed elsewhere (by the agent's tool, on the server) to the browser's copy. */
+export function replayChanges(blueprint: Blueprint, changes: Change[]): Blueprint {
+  const patch: Record<string, unknown> = {}
+  for (const change of changes) setPath(patch, change.path, change.after)
+  return applyPatch(blueprint, patch).blueprint
+}
+
 /** Undo: writes every `before` value back. Goes through the same gate as any other change. */
 export function revertChanges(blueprint: Blueprint, changes: Change[]): Blueprint {
   const patch: Record<string, unknown> = {}

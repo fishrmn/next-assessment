@@ -42,7 +42,7 @@ if (existingBlueprints.length > 0) {
     `Database already has ${existingBlueprints.length} blueprint(s) — skipping seed.`
   )
 } else {
-  // A half-finished session, so the app shows a Blueprint "taking shape".
+  // Half-filled on purpose: the agent has something to build on and something left to ask.
   const data = normalizeBlueprint({
     business: {
       name: "Acme Payroll",

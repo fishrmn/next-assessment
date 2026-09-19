@@ -1,4 +1,4 @@
-import { documentSection, slotText } from "@/lib/blueprint/document-sections"
+import { slotText } from "@/lib/blueprint/document-sections"
 import type { Blueprint, ScaleValue, SectionId } from "@/lib/blueprint/model"
 import {
   SCALES,
@@ -33,23 +33,14 @@ const NEUTRAL = {
  * It lays itself out by its container (`@container`), never by the window,
  * because it lives in a half-width panel and in a full-width presentation.
  *
- * Every title and sentence is read through `slotText`, which returns the person's
- * edit when there is one and the generated text otherwise. Passing `inspect` turns
- * each section into a pickable target for the inspect tool; without it (the
- * presentation route) the document is inert.
+ * Every title and sentence is read through `slotText`, which returns the reworded
+ * text when the agent stored one (`blueprint.copy`) and the generated text otherwise.
  */
-export type InspectControls = {
-  selected: SectionId | null
-  onSelect: (id: SectionId) => void
-}
-
 export function BlueprintDocument({
   blueprint,
-  inspect,
   className,
 }: {
   blueprint: Blueprint
-  inspect?: InspectControls
   className?: string
 }) {
   const { business, expression } = blueprint
@@ -84,11 +75,7 @@ export function BlueprintDocument({
         className
       )}
     >
-      <Inspectable
-        as="header"
-        id="hero"
-        inspect={inspect}
-        inset
+      <header
         className="flex flex-col gap-4 bg-(--bp-primary) p-6 text-(--bp-on-primary) transition-[background-color,color] duration-300 @2xl:p-10"
       >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium tracking-widest uppercase opacity-80">
@@ -110,16 +97,16 @@ export function BlueprintDocument({
         ) : (
           <p className="text-lg opacity-60">What they do, and for whom.</p>
         )}
-      </Inspectable>
+      </header>
 
       <div className="grid gap-x-10 gap-y-8 p-6 @2xl:grid-cols-2 @2xl:p-10">
-        <Block id="apart" blueprint={blueprint} inspect={inspect}>
+        <Block id="apart" blueprint={blueprint}>
           <Answer value={text("apart", "body")} />
         </Block>
-        <Block id="headed" blueprint={blueprint} inspect={inspect}>
+        <Block id="headed" blueprint={blueprint}>
           <Answer value={text("headed", "body")} />
         </Block>
-        <Block id="against" blueprint={blueprint} inspect={inspect}>
+        <Block id="against" blueprint={blueprint}>
           {business.comparables.length > 0 ? (
             <ul className="flex flex-wrap gap-2">
               {business.comparables.map((name) => (
@@ -135,7 +122,7 @@ export function BlueprintDocument({
             <Pending />
           )}
         </Block>
-        <Block id="personality" blueprint={blueprint} inspect={inspect}>
+        <Block id="personality" blueprint={blueprint}>
           {expression.personality.length > 0 ? (
             <p className="font-(family-name:--bp-heading) text-2xl leading-tight font-semibold text-(--bp-primary) @2xl:text-3xl">
               {expression.personality.join(" · ")}
@@ -145,7 +132,7 @@ export function BlueprintDocument({
           )}
         </Block>
 
-        <Block id="voice" blueprint={blueprint} inspect={inspect} className="@2xl:col-span-2">
+        <Block id="voice" blueprint={blueprint} className="@2xl:col-span-2">
           <div className="grid gap-6 @2xl:grid-cols-2 @2xl:gap-10">
             <ul className="flex flex-col gap-3">
               {toneScales.map((field) => (
@@ -167,14 +154,14 @@ export function BlueprintDocument({
           </div>
         </Block>
 
-        <Block id="look" blueprint={blueprint} inspect={inspect}>
+        <Block id="look" blueprint={blueprint}>
           <ul className="flex flex-col gap-3">
             {visualScales.map((field) => (
               <ScaleRow key={field.id} field={field} value={readScale(blueprint, field.id)} />
             ))}
           </ul>
         </Block>
-        <Block id="typography" blueprint={blueprint} inspect={inspect}>
+        <Block id="typography" blueprint={blueprint}>
           {font ? (
             <div className="flex flex-col gap-1">
               <p className="font-(family-name:--bp-heading) text-3xl leading-tight font-semibold">
@@ -187,7 +174,7 @@ export function BlueprintDocument({
           )}
         </Block>
 
-        <Block id="color" blueprint={blueprint} inspect={inspect} className="@2xl:col-span-2">
+        <Block id="color" blueprint={blueprint} className="@2xl:col-span-2">
           {expression.color.palette ? (
             <div className="flex flex-col gap-3">
               <ul className="grid grid-cols-2 gap-3 @2xl:grid-cols-4">
@@ -215,91 +202,24 @@ export function BlueprintDocument({
   )
 }
 
-/**
- * Wraps one section of the document. With `inspect` it becomes a target of the inspect tool, the
- * way DevTools highlights a node: a blue outline and tint on hover, a chip naming the section,
- * and a click (or Enter/Space) that selects it. Without `inspect` it is a plain element.
- *
- * The highlight is drawn by the outline and an `::after` overlay, never by the element's own
- * background, so it works on the brand-colored header as well as on the page. `inset` keeps the
- * outline inside the element, for sections that touch the document's edge.
- */
-function Inspectable({
-  as: Tag = "section",
-  id,
-  inspect,
-  inset = false,
-  className,
-  children,
-}: {
-  as?: "section" | "header"
-  id: SectionId
-  inspect?: InspectControls
-  inset?: boolean
-  className?: string
-  children: React.ReactNode
-}) {
-  if (!inspect) return <Tag className={className}>{children}</Tag>
-
-  const label = documentSection(id).label
-  const selected = inspect.selected === id
-  return (
-    <Tag
-      role="button"
-      tabIndex={0}
-      aria-pressed={selected}
-      aria-label={`Edit text of ${label}`}
-      data-selected={selected || undefined}
-      onClick={() => inspect.onSelect(id)}
-      onKeyDown={(event) => {
-        if (event.key !== "Enter" && event.key !== " ") return
-        event.preventDefault()
-        inspect.onSelect(id)
-      }}
-      className={cn(
-        "group/inspect relative cursor-pointer outline-2 outline-transparent transition-[outline-color] duration-150 ease-out",
-        "after:pointer-events-none after:absolute after:bg-inspect/12 after:opacity-0 after:transition-opacity after:duration-150 after:ease-out",
-        "hover:outline-inspect/70 hover:after:opacity-100 focus-visible:outline-inspect data-selected:outline-inspect data-selected:after:opacity-100",
-        inset
-          ? "-outline-offset-2 after:inset-0"
-          : "rounded-md outline-offset-8 after:-inset-2 after:rounded-md",
-        className
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute z-10 rounded-sm bg-inspect px-1.5 py-0.5 font-sans text-[0.625rem] leading-none font-medium tracking-normal text-inspect-foreground normal-case opacity-0 transition-opacity duration-150 ease-out group-hover/inspect:opacity-100 group-focus-visible/inspect:opacity-100 group-data-selected/inspect:opacity-100",
-          inset ? "top-2 right-2" : "-top-5 -left-2"
-        )}
-      >
-        {label}
-      </span>
-      {children}
-    </Tag>
-  )
-}
-
 function Block({
   id,
   blueprint,
-  inspect,
   className,
   children,
 }: {
   id: SectionId
   blueprint: Blueprint
-  inspect?: InspectControls
   className?: string
   children: React.ReactNode
 }) {
   return (
-    <Inspectable id={id} inspect={inspect} className={cn("flex min-w-0 flex-col gap-3", className)}>
+    <section className={cn("flex min-w-0 flex-col gap-3", className)}>
       <h3 className="max-w-full text-xs font-medium tracking-widest uppercase wrap-anywhere opacity-60">
         {slotText(blueprint, id, "title")}
       </h3>
       {children}
-    </Inspectable>
+    </section>
   )
 }
 

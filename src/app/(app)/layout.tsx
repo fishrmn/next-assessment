@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app-shell"
-import { SECTIONS, sectionStatus } from "@/lib/blueprint/registry"
+import { completion } from "@/lib/blueprint/fields"
 import { listBlueprints } from "@/lib/blueprints"
 
 // The sidebar lists Blueprints straight from SQLite; never serve it from a build-time snapshot.
@@ -11,12 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const blueprints = listBlueprints().map((blueprint) => ({
     id: blueprint.id,
     name: blueprint.name,
-    sections: SECTIONS.map((section) => ({
-      id: section.id,
-      title: section.title,
-      firstQuestion: section.questions[0],
-      status: sectionStatus(blueprint.data, section),
-    })),
+    percent: completion(blueprint.data),
   }))
 
   return <AppShell blueprints={blueprints}>{children}</AppShell>

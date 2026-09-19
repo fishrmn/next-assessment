@@ -1,14 +1,14 @@
 /**
  * The field registry: everything the app knows ABOUT the Blueprint's fields.
  *
- * The model (`model.ts`) says what is stored. This file says how each field is
- * asked, what its two poles are called, and which concrete example stands for
- * each pole. The intake form, the Blueprint document and (Phase 2) the AI
- * prompt all read from here, so a field is described in exactly one place.
+ * The model (`model.ts`) says what is stored. This file says what each scale's two
+ * poles are called and which example sentence stands for each pole, which fonts and
+ * starting palettes exist, and how stored values read in words. The Blueprint document
+ * and the agent's instructions both read from here, so a field is described in one place.
  *
  * Data only, no React: it must stay usable from server code and prompts.
  */
-import type { Blueprint, FontPairing, Palette, Scale, ScaleValue } from "./model"
+import type { Blueprint, FontPairing, Palette, ScaleValue } from "./model"
 
 /* -------------------------------------------------------------------------- */
 /* Scales                                                                     */
@@ -25,14 +25,13 @@ export type ScaleId =
 type Pole = {
   /** Adjective used in the document: "Formal". */
   label: string
-  /** Example copy for this pole. Visual scales use a drawn sketch instead. */
+  /** A sentence written at this pole. It teaches the agent what the pole sounds like. */
   example?: (brand: string) => string
 }
 
 export type ScaleField = {
   id: ScaleId
   group: "tone" | "visual"
-  question: (brand: string) => string
   left: Pole
   right: Pole
 }
@@ -41,7 +40,6 @@ export const SCALES: ScaleField[] = [
   {
     id: "formality",
     group: "tone",
-    question: (brand) => `Which sounds more like ${brand}?`,
     left: {
       label: "Formal",
       example: (brand) =>
@@ -55,7 +53,6 @@ export const SCALES: ScaleField[] = [
   {
     id: "humor",
     group: "tone",
-    question: (brand) => `How does ${brand} handle a boring topic?`,
     left: {
       label: "Serious",
       example: () =>
@@ -70,7 +67,6 @@ export const SCALES: ScaleField[] = [
   {
     id: "attitude",
     group: "tone",
-    question: (brand) => `How does ${brand} talk about the old way of doing things?`,
     left: {
       label: "Respectful",
       example: () =>
@@ -84,7 +80,6 @@ export const SCALES: ScaleField[] = [
   {
     id: "energy",
     group: "tone",
-    question: (brand) => `${brand} just shipped something new. How do you announce it?`,
     left: {
       label: "Matter-of-fact",
       example: () => "New this week: faster setup. It takes four minutes now.",
@@ -97,14 +92,12 @@ export const SCALES: ScaleField[] = [
   {
     id: "density",
     group: "visual",
-    question: (brand) => `Which page feels more like ${brand}?`,
     left: { label: "Minimal" },
     right: { label: "Bold" },
   },
   {
     id: "era",
     group: "visual",
-    question: (brand) => `Which style feels more like ${brand}?`,
     left: { label: "Classic" },
     right: { label: "Modern" },
   },
@@ -117,13 +110,6 @@ export function scaleField(id: ScaleId): ScaleField {
 export function readScale(blueprint: Blueprint, id: ScaleId): ScaleValue {
   const { tone, visual } = blueprint.expression
   return id === "density" || id === "era" ? visual[id] : tone[id]
-}
-
-export function writeScale(blueprint: Blueprint, id: ScaleId, value: Scale): Blueprint {
-  const expression = blueprint.expression
-  return id === "density" || id === "era"
-    ? { ...blueprint, expression: { ...expression, visual: { ...expression.visual, [id]: value } } }
-    : { ...blueprint, expression: { ...expression, tone: { ...expression.tone, [id]: value } } }
 }
 
 /** A scale position in words: "Very casual", "Leans formal", "Balanced". Null when unanswered. */
@@ -176,11 +162,6 @@ export const PALETTES: PalettePreset[] = [
   { id: "fjord", name: "Fjord", palette: { primary: "#47607a", secondary: "#2b3a4a", accent: "#9db4c8", background: "#f3f6f9" } },
   { id: "electric", name: "Electric", palette: { primary: "#6d28d9", secondary: "#2e1065", accent: "#22d3ee", background: "#f7f3ff" } },
 ]
-
-export function matchingPreset(palette: Palette | null): PalettePreset | null {
-  if (!palette) return null
-  return PALETTES.find((preset) => preset.palette.primary === palette.primary && preset.palette.accent === palette.accent) ?? null
-}
 
 /** Hue (0-360) and saturation (0-1) of a #rrggbb color. */
 function hueAndSaturation(hex: string): { hue: number; saturation: number } {
@@ -241,61 +222,4 @@ export const FONTS: FontPairingInfo[] = [
 
 export function fontInfo(id: FontPairing | null): FontPairingInfo | null {
   return FONTS.find((font) => font.id === id) ?? null
-}
-
-/* -------------------------------------------------------------------------- */
-/* Intake flow                                                                */
-/* -------------------------------------------------------------------------- */
-
-export type QuestionId = "basics" | "personality" | ScaleId | "color" | "typography"
-
-export type Section = {
-  id: string
-  title: string
-  layer: "Business context" | "Brand expression"
-  questions: QuestionId[]
-}
-
-/** The intake, in order. One question shows at a time; sections group them in the sidebar. */
-export const SECTIONS: Section[] = [
-  { id: "basics", title: "Basics", layer: "Business context", questions: ["basics"] },
-  { id: "personality", title: "Personality", layer: "Brand expression", questions: ["personality"] },
-  { id: "voice", title: "Voice", layer: "Brand expression", questions: ["formality", "humor", "attitude", "energy"] },
-  { id: "look", title: "Look", layer: "Brand expression", questions: ["density", "era"] },
-  { id: "color", title: "Color", layer: "Brand expression", questions: ["color"] },
-  { id: "type", title: "Typography", layer: "Brand expression", questions: ["typography"] },
-]
-
-export const QUESTIONS: QuestionId[] = SECTIONS.flatMap((section) => section.questions)
-
-export function sectionOf(question: QuestionId): Section {
-  return SECTIONS.find((section) => section.questions.includes(question))!
-}
-
-export function isQuestionId(value: string | null): value is QuestionId {
-  return QUESTIONS.includes(value as QuestionId)
-}
-
-export function isAnswered(blueprint: Blueprint, question: QuestionId): boolean {
-  const { business, expression } = blueprint
-  switch (question) {
-    case "basics":
-      return Boolean(business.name && business.offer && business.audience)
-    case "personality":
-      return expression.personality.length > 0
-    case "color":
-      return expression.color.palette !== null
-    case "typography":
-      return expression.typography.pairing !== null
-    default:
-      return readScale(blueprint, question) !== null
-  }
-}
-
-export type SectionStatus = "empty" | "partial" | "done"
-
-export function sectionStatus(blueprint: Blueprint, section: Section): SectionStatus {
-  const answered = section.questions.filter((question) => isAnswered(blueprint, question)).length
-  if (answered === 0) return "empty"
-  return answered === section.questions.length ? "done" : "partial"
 }

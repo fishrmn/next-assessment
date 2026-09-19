@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import { emptyBlueprint, normalizeBlueprint } from "./model"
 import { completion } from "./fields"
-import { describeColor, describeScale, scaleField, writeScale } from "./registry"
+import { applyPatch } from "./patch"
+import { describeColor, describeScale, scaleField } from "./registry"
 
 describe("normalizeBlueprint", () => {
   it("turns anything into a valid, empty Blueprint", () => {
@@ -59,8 +60,8 @@ describe("registry", () => {
     expect(describeScale(humor, 3)).toBe("Between serious and playful")
   })
 
-  it("counts answered questions", () => {
-    const blueprint = writeScale(emptyBlueprint("Acme"), "density", 2)
+  it("counts filled fields", () => {
+    const { blueprint } = applyPatch(emptyBlueprint("Acme"), { expression: { visual: { density: 2 } } })
     expect(completion(emptyBlueprint())).toBe(0)
     // "Acme" and one scale: 2 of 16 fields.
     expect(completion(blueprint)).toBe(13)
