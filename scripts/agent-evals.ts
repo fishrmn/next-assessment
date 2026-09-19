@@ -12,8 +12,9 @@
 import { existsSync } from "node:fs"
 
 import { DEFAULT_MODEL, createBlueprintAgent, type UpdateBlueprintOutput } from "../src/agents/blueprint"
+import type { Scope } from "../src/lib/blueprint/document-sections"
 import { FIELDS, getPath } from "../src/lib/blueprint/fields"
-import { emptyBlueprint, normalizeBlueprint, type Blueprint } from "../src/lib/blueprint/model"
+import { SECTION_IDS, emptyBlueprint, normalizeBlueprint, type Blueprint } from "../src/lib/blueprint/model"
 import { replayChanges } from "../src/lib/blueprint/patch"
 import { describeColor } from "../src/lib/blueprint/registry"
 
@@ -43,6 +44,8 @@ type Case = {
   name: string
   from: Blueprint
   say: string
+  /** The part of the document the person clicked before writing, as the chat would send it. */
+  about?: Scope
   /** Path prefixes this request is allowed to change. A change anywhere else fails the case. */
   touches: string[]
   check: (outcome: Outcome) => string | null
@@ -54,7 +57,7 @@ type Case = {
  * model quietly repaired it with a second call. The old checks still passed.
  */
 function collateralDamage(item: Case, { before, after }: Outcome): string | null {
-  const paths = [...FIELDS.map((field) => field.path), "copy"]
+  const paths = [...FIELDS.map((field) => field.path), ...SECTION_IDS.map((id) => `copy.${id}`)]
   const changed = paths.filter(
     (path) => JSON.stringify(getPath(before, path)) !== JSON.stringify(getPath(after, path))
   )
@@ -79,7 +82,8 @@ const cases: Case[] = [
     name: "PDF example: warmer colors",
     from: acme,
     say: "swap the color direction to something warmer",
-    touches: ["expression.color", "direction", "copy"],
+    // Colors only: a correction to one thing must not rewrite the voice or the direction.
+    touches: ["expression.color", "copy.color"],
     check: ({ after }) => {
       const words = describeColor(after.expression.color.palette)
       return words?.startsWith("Warm") ? null : `palette reads as "${words}", not warm`
@@ -135,6 +139,17 @@ const cases: Case[] = [
     },
   },
   {
+    name: "Pointed at Color: a sweeping request still changes only the colors",
+    from: acme,
+    about: "color",
+    say: 'About “Color”: this whole thing feels cold and corporate, make it feel like a friendly neighborhood shop',
+    touches: ["expression.color", "copy.color"],
+    check: ({ before, after }) =>
+      JSON.stringify(before.expression.color.palette) !== JSON.stringify(after.expression.color.palette)
+        ? null
+        : "the palette did not change",
+  },
+  {
     name: "Remove on request: clears that field and nothing else",
     from: acme,
     say: "take the competitors off, we don't want anyone named in the document",
@@ -146,7 +161,7 @@ const cases: Case[] = [
 
 async function run(item: Case): Promise<{ outcome: Outcome; tokens: number; seconds: number }> {
   const started = Date.now()
-  const result = await createBlueprintAgent(item.from).generate({ prompt: item.say })
+  const result = await createBlueprintAgent(item.from, { about: item.about }).generate({ prompt: item.say })
 
   let after = item.from
   let calls = 0

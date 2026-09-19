@@ -11,6 +11,8 @@
  * - `rejected`: fields where the gate refused or altered the requested value, with the rule,
  *   so the agent can correct itself in the same turn. A rejected field keeps the value it had:
  *   a bad request never destroys good data (one invalid color must not erase the palette).
+ *
+ * `only` narrows a patch to part of the Blueprint: paths outside it are rejected the same way.
  */
 import { SCALES, describeColor, describeScale, fontInfo } from "./registry"
 import { FIELDS, getPath } from "./fields"
@@ -138,14 +140,28 @@ function ruleFor(path: string): string {
   return "not a field of the Blueprint"
 }
 
-export function applyPatch(blueprint: Blueprint, patch: unknown): PatchResult {
+const OUT_OF_SCOPE = "outside the part the person pointed at; it was left as it is"
+
+export type PatchOptions = {
+  /** Path prefixes that may change. Every other path in the patch is rejected and keeps its value. */
+  only?: string[]
+}
+
+export function applyPatch(blueprint: Blueprint, patch: unknown, { only }: PatchOptions = {}): PatchResult {
   const paths = [...new Set(leafPaths(patch))]
+  const allowed = (path: string) =>
+    !only || only.some((prefix) => path === prefix || path.startsWith(`${prefix}.`))
   const wanted = merge(blueprint, patch)
   const gated = normalizeBlueprint(wanted)
 
   const rejected: Rejection[] = []
   const restore: Record<string, unknown> = {}
   for (const path of paths) {
+    if (!allowed(path)) {
+      rejected.push({ path, label: labelOf(path), reason: OUT_OF_SCOPE })
+      setPath(restore, path, getPath(blueprint, path) ?? null)
+      continue
+    }
     const asked = getPath(wanted, path)
     const result = getPath(gated, path)
     // Clearing a field is asked with null or ""; the gate stores it as null, "" or a missing key.

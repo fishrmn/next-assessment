@@ -28,6 +28,24 @@ describe("createWorkingCopy", () => {
   })
 })
 
+describe("a turn about one part", () => {
+  it("lets the tool change only that part", () => {
+    const working = createWorkingCopy(emptyBlueprint("Acme"), ["expression.tone", "copy.voice"])
+    const { applied, rejected } = working.update({
+      expression: { tone: { humor: 4 }, personality: ["Bold"] },
+    })
+    expect(applied.map((change) => change.path)).toEqual(["expression.tone.humor"])
+    expect(rejected.map((item) => item.path)).toEqual(["expression.personality"])
+  })
+
+  it("tells the agent which part, and only when there is one", () => {
+    expect(buildInstructions(emptyBlueprint("Acme"))).not.toContain("THIS TURN IS ABOUT ONE PART")
+    const scoped = buildInstructions(emptyBlueprint("Acme"), { about: "color" })
+    expect(scoped).toContain('The person pointed at "Color"')
+    expect(scoped).toContain("expression.color, copy.color")
+  })
+})
+
 describe("buildInstructions", () => {
   it("carries the current Blueprint and what is still missing", () => {
     const blueprint = normalizeBlueprint({

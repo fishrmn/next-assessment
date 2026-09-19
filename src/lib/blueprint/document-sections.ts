@@ -132,6 +132,35 @@ export const DOCUMENT_SECTIONS: DocumentSection[] = [
   },
 ]
 
+/** A part of the document a person can point at: a section, or the direction block above them. */
+export type Scope = SectionId | "direction"
+
+/**
+ * The fields behind each part of the document, as path prefixes. When a person points at a part
+ * and asks for a change, only these may change: the tool refuses everything else (`applyPatch`'s
+ * `only`). This is what makes a pointed correction predictable.
+ */
+export const SECTION_SCOPE: Record<Scope, string[]> = {
+  direction: ["direction"],
+  hero: ["business.name", "business.industry", "business.offer", "business.audience", "copy.hero"],
+  apart: ["business.differentiator", "copy.apart"],
+  headed: ["business.goal", "copy.headed"],
+  against: ["business.comparables", "copy.against"],
+  personality: ["expression.personality", "copy.personality"],
+  voice: ["expression.tone", "copy.voice"],
+  look: ["expression.visual", "copy.look"],
+  typography: ["expression.typography", "copy.typography"],
+  color: ["expression.color", "copy.color"],
+}
+
+export function isScope(value: unknown): value is Scope {
+  return typeof value === "string" && Object.hasOwn(SECTION_SCOPE, value)
+}
+
+export function scopeLabel(scope: Scope): string {
+  return scope === "direction" ? "The direction" : documentSection(scope).label
+}
+
 export function documentSection(id: SectionId): DocumentSection {
   return DOCUMENT_SECTIONS.find((section) => section.id === id)!
 }

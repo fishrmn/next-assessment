@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { documentSection } from "@/lib/blueprint/document-sections"
+import { scopeLabel } from "@/lib/blueprint/document-sections"
 import { completion, openFacts, stageOf, statusOf } from "@/lib/blueprint/fields"
 import type { Blueprint } from "@/lib/blueprint/model"
 import { cn } from "@/lib/utils"
@@ -221,8 +221,7 @@ function Screen({
             confirmed: blueprint.review.confirmed,
             picked: about?.id ?? null,
             onPick: (picked) => {
-              const label = picked === "direction" ? "The direction" : documentSection(picked).label
-              setAbout(about?.id === picked ? null : { id: picked, label })
+              setAbout(about?.id === picked ? null : { id: picked, label: scopeLabel(picked) })
               // Below lg the input lives in the other tab.
               setView("chat")
             },

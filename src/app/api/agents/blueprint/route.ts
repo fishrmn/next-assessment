@@ -1,6 +1,7 @@
 import { consumeStream, createAgentUIStreamResponse, createIdGenerator } from "ai"
 
 import { createBlueprintAgent } from "@/agents/blueprint"
+import { isScope } from "@/lib/blueprint/document-sections"
 import { normalizeBlueprint } from "@/lib/blueprint/model"
 import { saveMessages } from "@/lib/blueprints"
 
@@ -25,7 +26,10 @@ export async function POST(request: Request) {
   }
 
   return createAgentUIStreamResponse({
-    agent: createBlueprintAgent(normalizeBlueprint(body.blueprint)),
+    // `about` is the part of the document the person clicked before writing, if any.
+    agent: createBlueprintAgent(normalizeBlueprint(body.blueprint), {
+      about: isScope(body.about) ? body.about : undefined,
+    }),
     uiMessages: body.messages,
     // Stop in the chat aborts the request. Passing the signal on stops the model too, so the
     // server never produces changes the browser is no longer there to apply.

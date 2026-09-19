@@ -131,6 +131,34 @@ describe("applyPatch", () => {
   })
 })
 
+describe("applyPatch with `only`", () => {
+  it("changes the part that was pointed at and refuses the rest", () => {
+    const palette = { primary: "#c2410c", secondary: "#7c2d12", accent: "#f59e0b", background: "#fff7ed" }
+    const { blueprint, applied, rejected } = applyPatch(
+      acme,
+      {
+        expression: { color: { palette }, tone: { humor: 5 }, personality: ["Warm"] },
+        copy: { color: { body: "Warm and earthy." }, voice: { body: "Hey!" } },
+        direction: { headline: "A new idea" },
+      },
+      { only: ["expression.color", "copy.color"] }
+    )
+
+    expect(applied.map((change) => change.path)).toEqual(["expression.color.palette", "copy.color.body"])
+    expect(blueprint.expression.tone.humor).toBe(2)
+    expect(blueprint.expression.personality).toEqual(["Bold"])
+    expect(blueprint.direction.headline).toBe("")
+    expect(blueprint.copy.voice).toBeUndefined()
+    expect(rejected.map((item) => item.path)).toEqual([
+      "expression.tone.humor",
+      "expression.personality",
+      "copy.voice.body",
+      "direction.headline",
+    ])
+    expect(rejected[0].reason).toContain("outside the part")
+  })
+})
+
 describe("revertChanges", () => {
   it("undoes exactly the changes of one patch", () => {
     const first = applyPatch(acme, { expression: { tone: { humor: 4, formality: 5 } }, business: { audience: "small teams" } })

@@ -9,6 +9,7 @@
  */
 import { ToolLoopAgent, isStepCount, tool, type InferAgentUIMessage } from "ai"
 
+import { SECTION_SCOPE, scopeLabel, type Scope } from "@/lib/blueprint/document-sections"
 import { fieldGuide } from "@/lib/blueprint/field-guide"
 import { missingFields } from "@/lib/blueprint/fields"
 import type { Blueprint } from "@/lib/blueprint/model"
@@ -21,21 +22,26 @@ export const DEFAULT_MODEL = "openai/gpt-5.6-luna"
 export type UpdateBlueprintOutput = { applied: Change[]; rejected: Rejection[] }
 
 /** The Blueprint as it stands inside one turn. Every patch goes through `applyPatch`, the validated write path. */
-export function createWorkingCopy(initial: Blueprint) {
+export function createWorkingCopy(initial: Blueprint, only?: string[]) {
   let current = initial
   return {
     get current() {
       return current
     },
     update(patch: unknown): UpdateBlueprintOutput {
-      const { blueprint, applied, rejected } = applyPatch(current, patch)
+      const { blueprint, applied, rejected } = applyPatch(current, patch, { only })
       current = blueprint
       return { applied, rejected }
     },
   }
 }
 
-export function buildInstructions(blueprint: Blueprint): string {
+export type TurnOptions = {
+  /** The part of the document the person pointed at. Only its fields can change this turn. */
+  about?: Scope
+}
+
+export function buildInstructions(blueprint: Blueprint, { about }: TurnOptions = {}): string {
   const missing = missingFields(blueprint)
   const facts = missing.filter((field) => field.kind === "fact").map((field) => field.label)
   const expression = missing.filter((field) => field.kind === "expression").map((field) => field.label)
@@ -57,10 +63,10 @@ HOW TO WORK
 - Never say a change was made unless updateBlueprint returned it under "applied".
 
 PROPOSAL TEXTS
-People judge examples, not settings. Whenever you set or change brand expression, write or rewrite these in the same call, in the person's language:
-- direction.headline and direction.rationale: the direction you chose, and which of their own words led you there.
-- copy.voice.body: one sentence this brand could actually post, written in its voice.
-- copy.personality.body: one sentence on how the personality shows up in practice.
+People judge examples, not settings. With a first proposal, write all of these, in the person's language. Afterwards rewrite one only when the field it shows changed. A change to the colors does not touch the voice, the personality or the direction.
+- direction.headline and direction.rationale: the direction you chose, and which of their own words led you there. Rewrite them only when the brand's overall direction changes, never for a single adjustment.
+- copy.voice.body: one sentence this brand could actually post, written in its voice. Goes with expression.tone.
+- copy.personality.body: one sentence on how the personality shows up in practice. Goes with expression.personality.
 The document's own sentences are built in English ("We <offer> for <audience>"). If the person does not write in English, also write copy.hero.body, copy.apart.body and copy.headed.body in their language once you know those facts, and translate every section title (copy.<section>.title) once, so the page reads in one language.
 Write the texts without surrounding quotation marks.
 Keep every text true: if a change makes one of them wrong (a text that names colors you just replaced), rewrite it in the same call.
@@ -78,18 +84,25 @@ ${fieldGuide()}
 CURRENT BLUEPRINT
 ${JSON.stringify(blueprint)}
 
-STILL MISSING
+${
+    about
+      ? `THIS TURN IS ABOUT ONE PART
+The person pointed at "${scopeLabel(about)}" before writing. Only these fields can change this turn: ${SECTION_SCOPE[about].join(", ")}. The tool rejects anything else, so do not send it. If your change makes something outside this part untrue (a text that describes what you just replaced), leave it, tell the person which text no longer fits, and ask whether to update it.
+
+`
+      : ""
+  }STILL MISSING
 Business facts: ${facts.length > 0 ? facts.join(", ") : "none"}
 Brand expression: ${expression.length > 0 ? expression.join(", ") : "none"}`
 }
 
-export function createBlueprintAgent(blueprint: Blueprint) {
-  const working = createWorkingCopy(blueprint)
+export function createBlueprintAgent(blueprint: Blueprint, turn: TurnOptions = {}) {
+  const working = createWorkingCopy(blueprint, turn.about && SECTION_SCOPE[turn.about])
 
   return new ToolLoopAgent({
     id: "blueprint",
     model: process.env.BLUEPRINT_AGENT_MODEL || DEFAULT_MODEL,
-    instructions: buildInstructions(blueprint),
+    instructions: buildInstructions(blueprint, turn),
     tools: {
       updateBlueprint: tool({
         description:

@@ -5,11 +5,12 @@ import { DefaultChatTransport } from "ai"
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 
 import type { BlueprintMessage, UpdateBlueprintOutput } from "@/agents/blueprint"
-import type { Blueprint, SectionId } from "@/lib/blueprint/model"
+import type { Scope } from "@/lib/blueprint/document-sections"
+import type { Blueprint } from "@/lib/blueprint/model"
 import { replayChanges, revertChanges } from "@/lib/blueprint/patch"
 
 /** A part of the document the person pointed at, so their next message is about it. */
-export type About = { id: SectionId | "direction"; label: string }
+export type About = { id: Scope; label: string }
 
 type BlueprintChat = {
   messages: BlueprintMessage[]
@@ -117,7 +118,10 @@ export function BlueprintChatProvider({
   }, [messages, onBlueprintChange])
 
   // Not `id`: useChat puts its own chat id in the body under that name, and it would win.
-  const request = useCallback(() => ({ body: { blueprintId: id, blueprint: latest.current } }), [id])
+  const request = useCallback(
+    (scope?: About["id"]) => ({ body: { blueprintId: id, blueprint: latest.current, about: scope } }),
+    [id]
+  )
 
   const value = useMemo<BlueprintChat>(
     () => ({
@@ -127,10 +131,10 @@ export function BlueprintChatProvider({
       setAbout,
       busy: status === "submitted" || status === "streaming",
       error: status === "error" ? readable(error) : null,
-      // The section the person pointed at travels inside the message, where both they and the
-      // agent can read it. No hidden channel.
+      // The part the person pointed at travels twice: inside the message, where they and the
+      // agent can read it, and as `about`, which the server uses to refuse any other change.
       send: (text) => {
-        void sendMessage({ text: about ? `About “${about.label}”: ${text}` : text }, request())
+        void sendMessage({ text: about ? `About “${about.label}”: ${text}` : text }, request(about?.id))
         setAbout(null)
       },
       stop: () => void stop(),
