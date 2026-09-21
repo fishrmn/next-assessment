@@ -2,6 +2,47 @@
 
 Everything is scaffolded and waiting for you. Clone the repo at [https://github.com/fishrmn/next-assessment](https://github.com/fishrmn/next-assessment) and start the assignment!
 
+## This submission
+
+The brief below is kept as it was given. This section describes what was built on top of it.
+
+A Blueprint is captured and edited by **talking to an agent**. There is no form: you describe the
+brand, the agent fills in the one-pager next to the chat, and every change it makes is listed with
+an Undo. "Make the tone more playful" or "a darker green" work the same way.
+
+**Run it**
+
+```bash
+nvm use                      # Node 22.22.0 exactly; npm install refuses any other version
+npm install
+cp .env.example .env.local   # then set AI_GATEWAY_API_KEY (Vercel AI Gateway)
+npm run db:reset
+npm run dev
+```
+
+Without a key the app runs and the chat explains what is missing. The decisions behind the
+design, what was rejected and what user testing changed are in [`DECISIONS.md`](DECISIONS.md).
+
+**How it works**
+
+| Piece | Where | What it does |
+|---|---|---|
+| Model | `src/lib/blueprint/model.ts` | One JSON object per Blueprint. `normalizeBlueprint` is the single gate for all input. |
+| Write API | `src/lib/blueprint/patch.ts` | `applyPatch` merges a partial Blueprint, validates it, and reports `applied` and `rejected`. |
+| Agent | `src/agents/blueprint.ts` | One tool, `updateBlueprint`. Instructions are generated from the field registry. |
+| Route | `src/app/api/agents/blueprint/route.ts` | Streams one chat turn and stores the transcript. |
+| Chat | `src/components/blueprint-chat/` | Sends the on-screen Blueprint with each message, applies each result once, lists changes. |
+| Document | `src/components/blueprint/blueprint-document.tsx` | A pure render of the model, in the client's colors and fonts. |
+
+The browser is the only writer of a Blueprint (autosave). The agent returns changes; it never saves.
+
+**Check it**
+
+```bash
+npm test              # 54 unit tests, no model calls
+npm run agent:evals   # 10 cases against the real model, a few cents
+```
+
 ## Project stack
 
 - Next.js (App Router) + TypeScript + Tailwind + shadcn/ui
