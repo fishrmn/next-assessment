@@ -1,6 +1,14 @@
 "use client"
 
-import { CheckIcon, MaximizeIcon, ThumbsUpIcon, TriangleAlertIcon } from "lucide-react"
+import {
+  CheckIcon,
+  Maximize2Icon,
+  MaximizeIcon,
+  Minimize2Icon,
+  ThumbsUpIcon,
+  TriangleAlertIcon,
+  XIcon,
+} from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -8,18 +16,21 @@ import { toast } from "sonner"
 import type { BlueprintMessage } from "@/agents/blueprint"
 import { saveBlueprint } from "@/actions/blueprints"
 import {
+  AgentPill,
   BlueprintChat,
   BlueprintChatInput,
   BlueprintChatProvider,
   useBlueprintChat,
 } from "@/components/blueprint-chat"
 import { BlueprintDocument } from "@/components/blueprint/blueprint-document"
+import { defaultMode, useChosenMode, type Mode } from "@/components/blueprint/mode"
 import { DeleteBlueprint } from "@/components/delete-blueprint"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Kbd } from "@/components/ui/kbd"
 import { Spinner } from "@/components/ui/spinner"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { scopeLabel } from "@/lib/blueprint/document-sections"
 import { completion, openFacts, stageOf, statusOf } from "@/lib/blueprint/fields"
 import type { Blueprint } from "@/lib/blueprint/model"
@@ -32,11 +43,13 @@ type SaveStatus = "saved" | "saving" | "error"
  * every change lands in local state (so the document re-renders at once) and is saved on its own
  * after a short pause. The browser is the only writer of the Blueprint; the agent never saves.
  *
- * The screen is built around three moments of a person who may know nothing about branding:
- * 1. Starting: one invitation and a text box. No document full of blanks, no progress to fill.
- * 2. Judging the first proposal: the document takes the room, led by the direction the agent
- *    chose and why. The chat sits beside it.
- * 3. Asking for a correction: say it, or click the part that feels off and say it.
+ * The screen is one conversation and one document in three layouts (`mode.ts`), and the layout
+ * follows the moment of a person who may know nothing about branding:
+ * 1. Starting: the agent has the screen. One invitation and a text box, no document full of blanks.
+ * 2. Judging and correcting a proposal: the agent is docked beside the document. Say what feels
+ *    off, or click the part that does.
+ * 3. A Blueprint the person confirmed: the document has the screen, the agent is a button that
+ *    says what it is doing. The person's own choice of layout always wins over these defaults.
  */
 export function Workspace({
   id,
@@ -104,7 +117,7 @@ function Screen({
   onChange: (next: Blueprint) => void
 }) {
   const { messages, updates, about, setAbout, send, busy } = useBlueprintChat()
-  const [view, setView] = useState<"chat" | "blueprint">("chat")
+  const [chosen, choose] = useChosenMode(id)
   const name = blueprint.business.name || "Untitled brand"
   const remove = <DeleteBlueprint id={id} name={name} from="workspace" />
 
@@ -144,20 +157,12 @@ function Screen({
     )
   }
 
-  // Between the moments: a conversation has started but there is no proposal to show yet.
-  if (stageOf(blueprint) === "start") {
-    return (
-      <>
-        <PageHeader title={name} actions={remove} />
-        <BlueprintChat
-          stage={null}
-          className="mx-auto h-[calc(100svh-var(--header-height)-10.5rem)] min-h-96 w-full max-w-2xl"
-        />
-      </>
-    )
-  }
+  // From here on it is one tree in three layouts. The chat and the document stay mounted in all of
+  // them, so switching layout never loses the conversation's scroll or a half-typed message.
+  const hasProposal = stageOf(blueprint) === "proposal"
+  // Until there is a proposal there is nothing to put next to the conversation.
+  const mode: Mode = hasProposal ? (chosen ?? defaultMode("proposal", blueprint.review.confirmed)) : "agent"
 
-  // Moments 2 and 3. The document leads; the chat accompanies the review.
   const label = statusOf(blueprint, updates)
   const open = openFacts(blueprint)
   const stillOpen =
@@ -167,74 +172,169 @@ function Screen({
 
   return (
     <>
+      <ModeShortcuts mode={mode} enabled={hasProposal} onChange={choose} />
       <PageHeader
         title={name}
         description={stillOpen ?? undefined}
         actions={
           <>
-            <SaveIndicator status={status} />
-            {blueprint.review.confirmed ? (
-              <Badge variant="secondary">
-                <CheckIcon />
-                {label}
-              </Badge>
-            ) : (
-              <>
-                <Badge variant="outline">{label}</Badge>
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => onChange({ ...blueprint, review: { confirmed: true } })}
-                >
-                  <ThumbsUpIcon />
-                  This represents us
-                </Button>
-              </>
+            {hasProposal && <SaveIndicator status={status} />}
+            {hasProposal &&
+              (blueprint.review.confirmed ? (
+                <Badge variant="secondary">
+                  <CheckIcon />
+                  {label}
+                </Badge>
+              ) : (
+                <>
+                  <Badge variant="outline">{label}</Badge>
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => onChange({ ...blueprint, review: { confirmed: true } })}
+                  >
+                    <ThumbsUpIcon />
+                    This represents us
+                  </Button>
+                </>
+              ))}
+            {hasProposal && (
+              <Link href={`/blueprints/${id}/present`} className={cn(buttonVariants({ variant: "outline" }))}>
+                <MaximizeIcon />
+                Present
+              </Link>
             )}
-            <Link href={`/blueprints/${id}/present`} className={cn(buttonVariants({ variant: "outline" }))}>
-              <MaximizeIcon />
-              Present
-            </Link>
             {remove}
           </>
         }
       />
 
-      <Tabs value={view} onValueChange={(next) => setView(next as typeof view)} className="lg:hidden">
-        <TabsList className="w-full">
-          <TabsTrigger value="chat">Chat</TabsTrigger>
-          <TabsTrigger value="blueprint">Blueprint</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(20rem,2fr)_minmax(0,3fr)]">
-        {/* The chat keeps a fixed height and scrolls inside, so its message box stays on screen while
-            the long document scrolls with the page. The numbers are the shell's header and padding,
-            the page header, and (below lg) the tabs. */}
-        <BlueprintChat
-          stage={completion(blueprint) < 60 ? "partial" : "filled"}
+      {/* Two columns whose widths say who leads. Animating the template makes the agent push the
+          document aside instead of covering it: the document is what the person came to watch. */}
+      <div
+        className={cn(
+          "grid items-start transition-[grid-template-columns,gap] duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+          mode === "document" && "gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,0fr)]",
+          mode === "side" && "gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]",
+          mode === "agent" && "gap-0 lg:grid-cols-[minmax(0,0fr)_minmax(0,1fr)]"
+        )}
+      >
+        <div
+          inert={mode === "agent"}
           className={cn(
-            "h-[calc(100svh-var(--header-height)-13.5rem)] min-h-96 lg:sticky lg:top-6 lg:flex lg:h-[calc(100svh-var(--header-height)-10.5rem)]",
-            view === "chat" ? "flex" : "hidden"
+            "min-w-0 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+            mode === "agent" ? "max-lg:hidden lg:h-0 lg:overflow-hidden lg:opacity-0" : "opacity-100",
+            // Below lg the agent is a panel over the bottom of the screen: leave room to scroll past it.
+            mode === "side" && "max-lg:pb-[64svh]"
+          )}
+        >
+          <BlueprintDocument
+            blueprint={blueprint}
+            details="folded"
+            className="mx-auto w-full max-w-4xl"
+            review={{
+              confirmed: blueprint.review.confirmed,
+              picked: about?.id ?? null,
+              onPick: (picked) => {
+                setAbout(about?.id === picked ? null : { id: picked, label: scopeLabel(picked) })
+                // Pointing at a part is asking to talk about it.
+                if (mode === "document") choose("side")
+              },
+            }}
+          />
+        </div>
+
+        <BlueprintChat
+          inert={mode === "document"}
+          stage={hasProposal ? (completion(blueprint) < 60 ? "partial" : "filled") : null}
+          toolbar={
+            hasProposal && (
+              <>
+                {mode === "agent" ? (
+                  <PanelButton label="Show the blueprint beside the agent" shortcut="⌘⇧J" onClick={() => choose("side")}>
+                    <Minimize2Icon />
+                  </PanelButton>
+                ) : (
+                  <PanelButton label="Give the agent the whole screen" shortcut="⌘⇧J" onClick={() => choose("agent")}>
+                    <Maximize2Icon />
+                  </PanelButton>
+                )}
+                <PanelButton label="Tuck the agent away" shortcut="⌘J" onClick={() => choose("document")}>
+                  <XIcon />
+                </PanelButton>
+              </>
+            )
+          }
+          className={cn(
+            "min-h-96 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+            mode === "document" && "max-lg:hidden lg:h-0 lg:min-h-0 lg:border-0 lg:opacity-0",
+            mode === "side" &&
+              "opacity-100 max-lg:fixed max-lg:inset-x-2 max-lg:bottom-2 max-lg:z-30 max-lg:h-[62svh] max-lg:min-h-0 max-lg:shadow-2xl lg:sticky lg:top-6 lg:h-[calc(100svh-var(--header-height)-10.5rem)]",
+            mode === "agent" &&
+              "mx-auto h-[calc(100svh-var(--header-height)-10.5rem)] w-full max-w-2xl opacity-100"
           )}
         />
-        <BlueprintDocument
-          blueprint={blueprint}
-          details="folded"
-          review={{
-            confirmed: blueprint.review.confirmed,
-            picked: about?.id ?? null,
-            onPick: (picked) => {
-              setAbout(about?.id === picked ? null : { id: picked, label: scopeLabel(picked) })
-              // Below lg the input lives in the other tab.
-              setView("chat")
-            },
-          }}
-          className={cn("lg:block", view !== "blueprint" && "hidden")}
-        />
       </div>
+
+      {mode === "document" && <AgentPill onOpen={() => choose("side")} />}
     </>
   )
+}
+
+function PanelButton({
+  label,
+  shortcut,
+  onClick,
+  children,
+}: {
+  label: string
+  shortcut: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label={label} onClick={onClick} />}>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>
+        {label} <Kbd>{shortcut}</Kbd>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/**
+ * ⌘J (Ctrl+J) opens and tucks away the agent. ⌘⇧J gives it the whole screen and takes it back.
+ * Esc tucks it away, unless a text field has the focus: there Esc belongs to the field.
+ */
+function ModeShortcuts({
+  mode,
+  enabled,
+  onChange,
+}: {
+  mode: Mode
+  enabled: boolean
+  onChange: (mode: Mode) => void
+}) {
+  useEffect(() => {
+    if (!enabled) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat) return
+      const typing = event.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
+        event.preventDefault()
+        if (event.shiftKey) onChange(mode === "agent" ? "side" : "agent")
+        else onChange(mode === "document" ? "side" : "document")
+      } else if (event.key === "Escape" && mode === "side" && !typing) {
+        onChange("document")
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [mode, enabled, onChange])
+
+  return null
 }
 
 /** Autosave feedback next to the screen's actions: the static cue that a change is safe. */
